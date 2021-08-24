@@ -462,6 +462,20 @@ struct Node final: Object
     virtual Node* AsNode() override final { return this; }
 };
 
+enum LinkPathType {
+    LinkPathType_Default,
+    LinkPathType_Under_Over,
+    LinkPathType_Over_Under,
+    LinkPathType_Under_Under
+};
+
+// The path of a link: one curve, or (angled links) rounded corners joined by straight segments
+struct LinkPath {
+    ImCubicBezierPoints m_Segments[7];
+    int m_SegmentCount;
+    LinkPathType m_Type;
+};
+
 struct Link final: Object
 {
     using IdType = LinkId;
@@ -495,6 +509,8 @@ struct Link final: Object
     void UpdateEndpoints();
 
     ImCubicBezierPoints GetCurve() const;
+    LinkPathType GetPathType(ImRect& fromRect, ImRect& toRect) const;
+    LinkPath GetPath() const;
 
     virtual bool TestHit(const ImVec2& point, float extraThickness = 0.0f) const override final;
     virtual bool TestHit(const ImRect& rect, bool allowIntersect = true) const override final;
