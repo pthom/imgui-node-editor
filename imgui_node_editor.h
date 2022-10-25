@@ -18,6 +18,7 @@
 # include <imgui.h>
 # include <cstdint> // std::uintXX_t
 # include <utility> // std::move
+#include <string>
 
 
 //------------------------------------------------------------------------------
@@ -91,7 +92,7 @@ struct Config
 {
     using CanvasSizeModeAlias = ax::NodeEditor::CanvasSizeMode;
 
-    const char*             SettingsFile;
+    std::string             SettingsFile;
     ConfigSession           BeginSaveSession;
     ConfigSession           EndSaveSession;
     ConfigSaveSettings      SaveSettings;
