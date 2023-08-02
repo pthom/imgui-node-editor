@@ -119,6 +119,13 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
     //m_DrawList->AddRectFilled(m_StartPos, m_StartPos + m_CurrentSize, IM_COL32(0, 0, 0, 64));
     //m_DrawList->AddRect(m_WidgetRect.Min, m_WidgetRect.Max, IM_COL32(255, 0, 255, 64));
 
+    // Fix for
+    //     https://github.com/thedmd/imgui-node-editor/issues/205
+    //     https://github.com/pthom/imgui_bundle/issues/117
+    // Adding a simple pixel at m_WidgetRect.Max is enough to temporarily solve the issue
+    // (the color is selected to be as transparent as possible)
+    m_DrawList->AddLine(m_WidgetRect.Max, m_WidgetRect.Max, IM_COL32(0, 0, 0, 1));
+
     ImGui::SetCursorScreenPos(ImVec2(0.0f, 0.0f));
 
 # if IMGUI_EX_CANVAS_DEFERED()
