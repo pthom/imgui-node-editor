@@ -4716,7 +4716,10 @@ bool ed::CreateItemAction::Begin()
     m_LinkThickness   = 1.0f;
 
     if (m_CurrentStage == None)
+    {
+        m_InActive = false;
         return false;
+    }
 
     m_LastChannel = Editor->GetDrawList()->_Splitter._Current;
 
