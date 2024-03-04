@@ -9,3 +9,5 @@ bin
 *.user
 *.ini
 *.json
+cmake-build-*
+.idea/
