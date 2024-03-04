@@ -6,3 +6,5 @@
 *.VC.db
 *.VC.opendb
 *.user
+cmake-build-*
+.idea/
