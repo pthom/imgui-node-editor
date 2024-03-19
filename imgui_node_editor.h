@@ -389,6 +389,24 @@ IMGUI_NODE_EDITOR_API int BreakLinks(PinId pinId); // Break all links connected 
 IMGUI_NODE_EDITOR_API void NavigateToContent(float duration = -1);
 IMGUI_NODE_EDITOR_API void NavigateToSelection(bool zoomIn = false, float duration = -1);
 
+// Shows context menu for node, link or background
+// Typical usage (this should happen inside ed::Begin/ed::End block):
+//        ed::Begin();
+//        ... (Show nodes)
+//        ed::Suspend();
+//        if (ed::ShowNodeContextMenu(&contextNodeId))
+//            ImGui::OpenPopup("Node Context Menu");
+//        ed::Resume();
+//        ...
+//        ed::Suspend();
+//        if (ImGui::BeginPopup("Node Context Menu"))
+//        {
+//            ImGui::Text("Node Context Menu, node ID: %d", contextNodeId);
+//            ImGui::EndPopup();
+//        }
+//        ed::Resume();
+//        ...
+//        ed::End();
 IMGUI_NODE_EDITOR_API bool ShowNodeContextMenu(NodeId* nodeId);
 IMGUI_NODE_EDITOR_API bool ShowPinContextMenu(PinId* pinId);
 IMGUI_NODE_EDITOR_API bool ShowLinkContextMenu(LinkId* linkId);
