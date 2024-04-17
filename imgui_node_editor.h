@@ -225,6 +225,14 @@ struct Style
     float   SnapLinkToPinDir; // when true link will start on the line defined by pin direction
     ImVec4  Colors[StyleColor_Count];
 
+    // [ADAPT_IMGUI_BUNDLE]
+#ifdef IMGUI_BUNDLE_PYTHON_API
+        // python adapter for Style::Colors[StyleColor_Count]
+        // You can query and modify those values (0 <= idxColor < StyleColor.count)
+        inline IMGUI_NODE_EDITOR_API ImVec4& Color_(StyleColor idxColor) { IM_ASSERT( (idxColor >=0) && (idxColor < StyleColor_Count)); return Colors[idxColor]; }
+        inline IMGUI_NODE_EDITOR_API void SetColor_(StyleColor idxColor, ImVec4 color) { IM_ASSERT( (idxColor >=0) && (idxColor < StyleColor_Count)); Colors[idxColor] = color; }
+#endif
+
     Style()
     {
         NodePadding              = ImVec4(8, 8, 8, 8);
