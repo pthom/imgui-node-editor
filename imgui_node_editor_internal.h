@@ -1396,6 +1396,10 @@ struct EditorContext
     bool IsHoveredWithoutOverlapp() const;
     bool CanAcceptUserInput() const;
 
+    // The editor ignores the mouse and the keyboard until the next Begin(): no pan, zoom, selection, drag, shortcut.
+    // Call it when a widget inside a node uses the mouse itself (e.g. a plot which is dragged or zoomed with the wheel).
+    void DisableUserInputThisFrame();
+
     void MakeDirty(SaveReasonFlags reason);
     void MakeDirty(SaveReasonFlags reason, Node* node);
 
@@ -1515,6 +1519,7 @@ private:
     bool                m_IsFocused;
     bool                m_IsHovered;
     bool                m_IsHoveredWithoutOverlapp;
+    bool                m_EnableUserInput;  // When false, discard all user inputs (see DisableUserInputThisFrame())
 
     bool                m_ShortcutsEnabled;
 
