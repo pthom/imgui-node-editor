@@ -1371,6 +1371,9 @@ struct EditorContext
     bool IsHoveredWithoutOverlapp() const;
     bool CanAcceptUserInput() const;
 
+    // This is *specific* to ImGui Bundle
+    void DisableUserInputThisFrame();
+
     void MakeDirty(SaveReasonFlags reason);
     void MakeDirty(SaveReasonFlags reason, Node* node);
 
@@ -1490,6 +1493,7 @@ private:
     bool                m_IsFocused;
     bool                m_IsHovered;
     bool                m_IsHoveredWithoutOverlapp;
+    bool                m_EnableUserInput;  // Specific to ImGui Bundle. When false, discard all user inputs
 
     bool                m_ShortcutsEnabled;
 
