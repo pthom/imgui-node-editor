@@ -1440,6 +1440,10 @@ struct EditorContext
     // then, so nothing is measured, interacted with or saved.
     bool IsFrozen() const { return m_IsFrozen; }
 
+    // The editor ignores the mouse and the keyboard until the next Begin(): no pan, zoom, selection, drag, shortcut.
+    // Call it when a widget inside a node uses the mouse itself (e.g. a plot which is dragged or zoomed with the wheel).
+    void DisableUserInputThisFrame();
+
     void MakeDirty(SaveReasonFlags reason);
     void MakeDirty(SaveReasonFlags reason, Node* node);
 
@@ -1565,6 +1569,7 @@ private:
     bool                m_IsHoveredWithoutOverlapp;
     ImGuiID             m_BackgroundId = 0;
     bool                m_IsNavigatePressInside = false; // the navigate button was pressed inside the editor, on no item that owns it
+    bool                m_EnableUserInput;  // When false, discard all user inputs (see DisableUserInputThisFrame())
 
     bool                m_ShortcutsEnabled;
 
