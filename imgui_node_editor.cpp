@@ -1351,6 +1351,7 @@ ed::EditorContext::EditorContext(const ax::NodeEditor::Config* config)
     , m_IsFocused(false)
     , m_IsHovered(false)
     , m_IsHoveredWithoutOverlapp(false)
+    , m_EnableUserInput(true)
     , m_ShortcutsEnabled(true)
     , m_Style()
     , m_BeginColorStackSize(0)
@@ -1408,6 +1409,7 @@ ed::EditorContext::~EditorContext()
 
 void ed::EditorContext::Begin(const char* id, const ImVec2& size)
 {
+    m_EnableUserInput = true;
     m_EditorActiveId = ImGui::GetID(id);
     ImGui::PushID(id);
 
@@ -1662,7 +1664,7 @@ void ed::EditorContext::End()
     if (!m_IsFrozen && m_CurrentAction && !m_CurrentAction->Process(control))
         m_CurrentAction = nullptr;
 
-    if (!m_IsFrozen)
+    if (!m_IsFrozen && m_EnableUserInput)
     {
         if (m_NavigateAction.m_IsActive)
             m_NavigateAction.Process(control);
@@ -2476,7 +2478,12 @@ bool ed::EditorContext::OwnsNavigateButton() const
 
 bool ed::EditorContext::CanAcceptUserInput() const
 {
-    return m_IsFocused && m_IsHovered;
+    return m_IsFocused && m_IsHovered && m_EnableUserInput;
+}
+
+void ed::EditorContext::DisableUserInputThisFrame()
+{
+    m_EnableUserInput = false;
 }
 
 int ed::EditorContext::CountLiveNodes() const
