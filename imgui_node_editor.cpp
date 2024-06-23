@@ -21,6 +21,7 @@
 # include <type_traits>
 
 #include <stack>
+#include <map>
 
 // https://stackoverflow.com/a/8597498
 # define DECLARE_HAS_NESTED(Name, Member)                                          \
@@ -5486,10 +5487,55 @@ struct
         float DC_ItemWidth = 0.f;
     };
     std::stack<ImGuiContentWidthData> m_StackOldContentWidth;
+
+    std::map<ax::NodeEditor::NodeId, std::deque<float>> m_PreviousNodesWidths;
+
+    bool IsNodeGrowingIndefinitely(ax::NodeEditor::NodeId nodeId)
+    {
+        // Test if a node seems to be growing indefinitely.
+        // If so, IM_ASSERT will be called with a nice error message
+
+        // Implementation details:
+        // For each node we store a history of their previous width (max 100)
+        // If for a sufficiently long period it has been growing with a constant rate,
+        // We will assume that it is growing forever.
+        // The history size is fixed at 100 frames. This is a large number but:
+        //   - we exit early if no regular increase is detected
+        //   - It is important for the user to be able to visually see the node growing
+        //     before raising the exception. That will help him identify which node is defective.
+        ImVec2 nodeSize = GetNodeSize(nodeId);
+        if (m_PreviousNodesWidths.find(nodeId) == m_PreviousNodesWidths.end())
+            m_PreviousNodesWidths[nodeId] = std::deque<float>();
+
+        std::deque<float>& nodePreviousWidths = m_PreviousNodesWidths.at(nodeId);
+        nodePreviousWidths.push_back(nodeSize.x);
+
+        const std::size_t maxHistorySize = 100;
+        while (nodePreviousWidths.size() > maxHistorySize)
+            nodePreviousWidths.pop_front();
+        if (nodePreviousWidths.size() < maxHistorySize)
+            return false;
+        float firstIncrease = nodePreviousWidths[1] - nodePreviousWidths[0];
+        if (firstIncrease <= 0.f)
+            return false;
+        for (size_t i = 1; i < maxHistorySize - 1; ++i)
+        {
+            float widthIncrease = nodePreviousWidths[i + 1] - nodePreviousWidths[i];
+            if (widthIncrease != firstIncrease)
+                return false;
+        }
+        return true;
+    }
+
 public:
     void OnBeginNode(ed::NodeId nodeId)
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
+
+        if (IsNodeGrowingIndefinitely(nodeId))
+        {
+            IM_ASSERT(false && "The node is growing indefinitely. Please make sure to use fixed width widgets! You may want to use ImGui::SetNextItemWidth(width) (C++) or imgui.set_next_item_width(width) (Python) before using a slider for example");
+        }
 
         ImGuiContentWidthData currentWindowContentWidth;
         currentWindowContentWidth.WorkRect_XMax = window->WorkRect.Max.x;

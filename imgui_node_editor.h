@@ -522,6 +522,12 @@ struct SafePointerType
     template <typename T = void> T* AsPointer() const { return reinterpret_cast<T*>(this->Get()); }
 
     explicit operator bool() const { return *this != Invalid; }
+
+    // [ADAPT_IMGUI_BUNDLE]: needed for the map used by IsNodeGrowingIndefinitely
+    bool operator<(const SafePointerType& other) const
+    {
+        return this->Get() < other.Get();
+    }
 };
 
 template <typename Tag>
