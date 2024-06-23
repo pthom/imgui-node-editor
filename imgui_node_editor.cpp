@@ -20,6 +20,8 @@
 # include <streambuf>
 # include <type_traits>
 
+#include <stack>
+
 // https://stackoverflow.com/a/8597498
 # define DECLARE_HAS_NESTED(Name, Member)                                          \
                                                                                    \
@@ -5453,6 +5455,91 @@ ed::NodeBuilder::~NodeBuilder()
     m_PinSplitter.ClearFreeMemory();
 }
 
+
+// [ADAPT_IMGUI_BUNDLE]
+// By default, ImGui::TextWrapped() and ImGui::Separator(), ImGui::SliderXXX
+// will not work in a Node because they will not respect the node's bounds.
+// Instead, they will use the bounds of the whole window.
+// This is a hack to fix that.
+// We will have to fix several elements in the current window data:
+// - WorkRect.Max.x: the maximum x value of the WorkRect
+//      (used by ImGui::Separator())
+// - ContentRegionRect.Max.x: the maximum x value of the ContentRegionRect
+//      (used by ImGui::TextWrapped())
+// - DC.ItemWidth: the width of the current item
+//      (used by SliderFloat, and all items that may require a prior call
+//       to ImGui::SetNextItemWidth())
+//
+// Implementation note:
+// - WorkRect.Max.x and ContentRegionRect.Max.x are set to:
+//      nodeSize.x + nodePos.x - ImGui::GetStyle().WindowPadding.x
+// - DC_ItemWidth is set to:
+//      nodeSize.x - ImGui::GetStyle().WindowPadding.x * 2.f - largestLabelSize.x
+//      (where largestLabelSize is the size of the largest label we want to handle by default:
+//       it consists of 4 wide characters)
+struct
+{
+    struct ImGuiContentWidthData
+    {
+        float WorkRect_XMax = 0.f;
+        float ContentRegionRect_XMax = 0.f;
+        float DC_ItemWidth = 0.f;
+    };
+    std::stack<ImGuiContentWidthData> m_StackOldContentWidth;
+public:
+    void OnBeginNode(ed::NodeId nodeId)
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+
+        ImGuiContentWidthData currentWindowContentWidth;
+        currentWindowContentWidth.WorkRect_XMax = window->WorkRect.Max.x;
+        currentWindowContentWidth.ContentRegionRect_XMax = window->ContentRegionRect.Max.x;
+        currentWindowContentWidth.DC_ItemWidth = window->DC.ItemWidth;
+        m_StackOldContentWidth.push(currentWindowContentWidth);
+
+        ImVec2 nodeSize = GetNodeSize(nodeId);
+        ImVec2 nodePos = GetNodePosition(nodeId);
+        bool hasNodePos = nodePos.x != FLT_MAX && nodePos.y != FLT_MAX;
+        if (hasNodePos)
+        {
+            // Fix WorkRect.Max: used by ImGui::Separator()
+            float newMax = nodeSize.x + nodePos.x - ImGui::GetStyle().WindowPadding.x * 2.f;
+            window->WorkRect.Max.x = newMax;
+
+            // Fix ContentRegionRect.Max: used by ImGui::TextWrapped()
+            window->ContentRegionRect.Max.x = newMax;
+
+            // Fix DC.ItemWidth: used by SliderFloat, and all items that may require a prior call to ImGui::SetNextItemWidth()
+            // We handle 4 wide characters at max: if the slider label is bigger, the node may begin to grow
+            // (and the user shall call ImGui::SetNextItemWidth to avoid this)
+            const char* largestLabelHandled = "MMMM";
+            ImVec2 largestLabelSize = ImGui::CalcTextSize(largestLabelHandled);
+            window->DC.ItemWidth = nodeSize.x - ImGui::GetStyle().WindowPadding.x * 2.f - largestLabelSize.x;
+
+            // And a call to PushTextWrapPos
+            float newWrapPos = nodeSize.x + nodePos.x - ImGui::GetStyle().WindowPadding.x;
+            ImGui::PushTextWrapPos(newWrapPos);
+        }
+        else
+        {
+            ImGui::PushTextWrapPos(ImGui::GetWindowPos().x + 20.f);
+        }
+    }
+
+    void OnEndNode()
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        auto currentWindowContentWidth = m_StackOldContentWidth.top();
+        m_StackOldContentWidth.pop();
+
+        window->WorkRect.Max.x = currentWindowContentWidth.WorkRect_XMax;
+        window->ContentRegionRect.Max.x = currentWindowContentWidth.ContentRegionRect_XMax;
+        window->DC.ItemWidth = currentWindowContentWidth.DC_ItemWidth;
+        ImGui::PopTextWrapPos();
+    }
+} sForceWindowContentWidthToNodeWidth;
+
+
 void ed::NodeBuilder::Begin(NodeId nodeId)
 {
     IM_ASSERT(nullptr == m_CurrentNode);
@@ -5533,10 +5620,18 @@ void ed::NodeBuilder::Begin(NodeId nodeId)
         ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(editorStyle.NodePadding.x, editorStyle.NodePadding.y));
         ImGui::BeginGroup();
     }
+
+    // [ADAPT_IMGUI_BUNDLE]
+    if (GetConfig().ForceWindowContentWidthToNodeWidth)
+        sForceWindowContentWidthToNodeWidth.OnBeginNode(nodeId);
 }
 
 void ed::NodeBuilder::End()
 {
+    // [ADAPT_IMGUI_BUNDLE]
+    if (GetConfig().ForceWindowContentWidthToNodeWidth)
+        sForceWindowContentWidthToNodeWidth.OnEndNode();
+
     IM_ASSERT(nullptr != m_CurrentNode);
 
     if (auto drawList = Editor->GetDrawList())
