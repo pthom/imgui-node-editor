@@ -109,6 +109,14 @@ struct Config
     bool                    EnableSmoothZoom;
     float                   SmoothZoomPower;
 
+    // [ADAPT_IMGUI_BUNDLE]
+    //
+    // By default, ImGui::TextWrapped() and ImGui::Separator(), and ImGui::SliderXXX
+    // will not work in a Node because they will not respect the node's bounds.
+    // Instead, they will use the width of the whole window.
+    // Set ForceWindowContentWidthToNodeWidth to true to fix this (this is disabled by default).
+    bool                    ForceWindowContentWidthToNodeWidth;
+
     Config()
         : SettingsFile("NodeEditor.json")
         , BeginSaveSession(nullptr)
@@ -130,6 +138,7 @@ struct Config
 # else
         , SmoothZoomPower(1.3f)
 # endif
+        , ForceWindowContentWidthToNodeWidth(false)
     {
     }
 };
