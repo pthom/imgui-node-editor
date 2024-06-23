@@ -108,6 +108,16 @@ struct Config
     bool                    EnableSmoothZoom;
     float                   SmoothZoomPower;
 
+    // Inside a node, Dear ImGui believes that the available width is the width of the window that hosts the editor:
+    // Separator(), SeparatorText(), CollapsingHeader() and TextWrapped() go far beyond the node, and sliders / input fields
+    // get a default width derived from the window.
+    // Set ForceWindowContentWidthToNodeWidth to true so that they use the width of the node (false by default).
+    // - All the text then wraps at the width of the node, so text does not give a width to the node: a node needs at least one
+    //   item with a fixed width (Dummy, a widget preceded by SetNextItemWidth()...), otherwise it collapses.
+    // - The default item width leaves room for a label of 4 wide characters. With a longer label, call SetNextItemWidth(),
+    //   otherwise the node grows at each frame (this is detected, and reported with an IM_ASSERT).
+    bool                    ForceWindowContentWidthToNodeWidth;
+
     Config()
         : SettingsFile("NodeEditor.json")
         , BeginSaveSession(nullptr)
@@ -129,6 +139,7 @@ struct Config
 # else
         , SmoothZoomPower(1.3f)
 # endif
+        , ForceWindowContentWidthToNodeWidth(false)
     {
     }
 };
