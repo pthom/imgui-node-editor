@@ -734,6 +734,12 @@ struct SafePointerType
     template <typename T = void> T* AsPointer() const { return reinterpret_cast<T*>(this->Get()); }
 
     explicit operator bool() const { return *this != Invalid; }
+
+    // Needed by the std::map used by IsNodeGrowingIndefinitely()
+    bool operator<(const SafePointerType& other) const
+    {
+        return this->Get() < other.Get();
+    }
 };
 
 template <typename Tag>
