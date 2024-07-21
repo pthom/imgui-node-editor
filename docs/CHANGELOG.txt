@@ -4,6 +4,10 @@ v0.10.0 (WIP):
         From this point ed::EndCreate() and ed::EndDelete() can only be called when
         ed::BeginCreate() and ed::BeginDelete() calls were successful.
 
+    RESTRUCTURE:
+        Removed local copy of all dependencies in favor of auto checkout. This should also reduce
+        user confusion and attempt to use ancient version of ImGui embedded in the repository.
+
     NEW: Canvas: Add example of zooming at fixed point (#270)
 
     NEW: Editor: Add smooth zoom (#266)
