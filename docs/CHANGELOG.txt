@@ -8,6 +8,8 @@ v0.10.0 (WIP):
 
     BREAKING: Canvas: Minimum supported version is now Dear ImGui 1.89 (August 2022)
 
+    BREAKING: Examples: Minimum supported version is now Dear ImGui 1.89 (August 2022)
+
     RESTRUCTURE:
         Removed local copy of all dependencies in favor of auto checkout. This should also reduce
         user confusion and attempt to use ancient version of ImGui embedded in the repository.
