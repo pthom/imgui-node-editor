@@ -40,46 +40,10 @@ namespace ax {
 namespace NodeEditor {
 namespace Detail {
 
-# if !defined(IMGUI_VERSION_NUM) || (IMGUI_VERSION_NUM < 18822)
-# define DECLARE_KEY_TESTER(Key)                                                                    \
-    DECLARE_HAS_NESTED(Key, Key)                                                                    \
-    struct KeyTester_ ## Key                                                                        \
-    {                                                                                               \
-        template <typename T>                                                                       \
-        static int Get(typename std::enable_if<has_nested_ ## Key<ImGuiKey_>::value, T>::type*)     \
-        {                                                                                           \
-            return ImGui::GetKeyIndex(T::Key);                                                      \
-        }                                                                                           \
-                                                                                                    \
-        template <typename T>                                                                       \
-        static int Get(typename std::enable_if<!has_nested_ ## Key<ImGuiKey_>::value, T>::type*)    \
-        {                                                                                           \
-            return -1;                                                                              \
-        }                                                                                           \
-    }
-
-DECLARE_KEY_TESTER(ImGuiKey_F);
-DECLARE_KEY_TESTER(ImGuiKey_D);
-
-static inline int GetKeyIndexForF()
-{
-    return KeyTester_ImGuiKey_F::Get<ImGuiKey_>(nullptr);
-}
-
-static inline int GetKeyIndexForD()
-{
-    return KeyTester_ImGuiKey_D::Get<ImGuiKey_>(nullptr);
-}
-# else
-static inline ImGuiKey GetKeyIndexForF()
-{
-    return ImGuiKey_F;
-}
-
-static inline ImGuiKey GetKeyIndexForD()
-{
-    return ImGuiKey_D;
-}
+# if !defined(IMGUI_VERSION_NUM)
+#     error IMGUI_VERSION_NUM is not defined, please update Dear ImGui copy to at least 1.89 (August 2022)
+# elif IMGUI_VERSION_NUM < 18900
+#     error Please update Dear ImGui copy to at least 1.89 (August 2022)
 # endif
 
 } // namespace Detail
@@ -129,11 +93,7 @@ static const float c_SelectionFadeOutDuration   = 0.15f; // seconds
 static const auto  c_MaxMoveOverEdgeSpeed       = 10.0f;
 static const auto  c_MaxMoveOverEdgeDistance    = 300.0f;
 
-#if IMGUI_VERSION_NUM > 18101
 static const auto  c_AllRoundCornersFlags = ImDrawFlags_RoundCornersAll;
-#else
-static const auto  c_AllRoundCornersFlags = 15;
-#endif
 
 
 //------------------------------------------------------------------------------
@@ -2565,7 +2525,7 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
 # if IMGUI_VERSION_NUM >= 18836
     if (m_IsHoveredWithoutOverlapp)
         ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
-# elif IMGUI_VERSION_NUM >= 17909
+# else
     if (m_IsHoveredWithoutOverlapp)
         ImGui::SetItemUsingMouseWheel();
 # endif
@@ -3333,7 +3293,7 @@ ed::EditorAction::AcceptResult ed::NavigateAction::Accept(const Control& control
 
     auto& io = ImGui::GetIO();
 
-    if (Editor->CanAcceptUserInput() && ImGui::IsKeyPressed(GetKeyIndexForF()) && Editor->AreShortcutsEnabled())
+    if (Editor->CanAcceptUserInput() && ImGui::IsKeyPressed(ImGuiKey_F) && Editor->AreShortcutsEnabled())
     {
         const auto zoomMode = io.KeyShift ? NavigateAction::ZoomMode::WithMargin : NavigateAction::ZoomMode::None;
 
@@ -4391,15 +4351,15 @@ ed::EditorAction::AcceptResult ed::ShortcutAction::Accept(const Control& control
     Action candidateAction = None;
 
     auto& io = ImGui::GetIO();
-    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_X)))
+    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_X))
         candidateAction = Cut;
-    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_C)))
+    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_C))
         candidateAction = Copy;
-    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_V)))
+    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_V))
         candidateAction = Paste;
-    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(GetKeyIndexForD()))
+    if (io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_D))
         candidateAction = Duplicate;
-    if (!io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space)))
+    if (!io.KeyCtrl && !io.KeyShift && !io.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_Space))
         candidateAction = CreateNode;
 
     if (candidateAction != None)
@@ -4953,7 +4913,7 @@ ed::EditorAction::AcceptResult ed::DeleteItemsAction::Accept(const Control& cont
         return False;
 
     auto& io = ImGui::GetIO();
-    if (Editor->CanAcceptUserInput() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Delete)) && Editor->AreShortcutsEnabled())
+    if (Editor->CanAcceptUserInput() && ImGui::IsKeyPressed(ImGuiKey_Delete) && Editor->AreShortcutsEnabled())
     {
         auto& selection = Editor->GetSelectedObjects();
         if (!selection.empty())
