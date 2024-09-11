@@ -210,6 +210,8 @@ struct Canvas
 
     ImGuiID m_beginWindowHook = 0;
     ImGuiID m_endWindowHook = 0;
+
+    ImVector<ImDrawList*> m_ChildrenDrawLists;
 #endif
 
 private:

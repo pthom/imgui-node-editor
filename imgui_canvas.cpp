@@ -106,6 +106,10 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
     m_WidgetRect = ImRect(m_WidgetPosition, m_WidgetPosition + m_WidgetSize);
     m_DrawList = ImGui::GetWindowDrawList();
 
+#ifdef HKCN1
+    m_ChildrenDrawLists.clear();
+#endif
+
     UpdateViewTransformPosition();
 
     if (ImGui::IsClippedEx(m_WidgetRect, id))
@@ -562,6 +566,36 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
             command.ClipRect.z = command.ClipRect.z * m_View.Scale + m_ViewTransformPosition.x;
             command.ClipRect.w = command.ClipRect.w * m_View.Scale + m_ViewTransformPosition.y;
         }
+
+
+        // HKCN1: do this on all children draw lists
+#ifdef HKCN1
+        {
+            for (auto drawList : m_ChildrenDrawLists)
+            {
+                auto vertex    = drawList->VtxBuffer.Data;
+                auto vertexEnd = drawList->VtxBuffer.Data + drawList->VtxBuffer.Size + ImVtxOffsetRef(drawList);
+
+                while (vertex < vertexEnd)
+                {
+                    vertex->pos.x = vertex->pos.x * m_View.Scale + m_ViewTransformPosition.x;
+                    vertex->pos.y = vertex->pos.y * m_View.Scale + m_ViewTransformPosition.y;
+                    ++vertex;
+                }
+
+                // Move clip rectangles to screen space.
+                for (int i = 0; i < drawList->CmdBuffer.size(); ++i)
+                {
+                    auto& command = drawList->CmdBuffer[i];
+                    command.ClipRect.x = command.ClipRect.x * m_View.Scale + m_ViewTransformPosition.x;
+                    command.ClipRect.y = command.ClipRect.y * m_View.Scale + m_ViewTransformPosition.y;
+                    command.ClipRect.z = command.ClipRect.z * m_View.Scale + m_ViewTransformPosition.x;
+                    command.ClipRect.w = command.ClipRect.w * m_View.Scale + m_ViewTransformPosition.y;
+                }
+            }
+        }
+#endif  // HKCN1
+
     }
     else
     {
