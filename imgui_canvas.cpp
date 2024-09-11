@@ -145,8 +145,53 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
 
     m_InBeginEnd = true;
 
+#ifdef HKCN1
+    InstallBeginEndHooks();
+#endif // HKCN1
     return true;
 }
+
+#ifdef HKCN1
+void ImGuiEx::Canvas::ImGuiBeginWindowHook()
+{
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    m_ChildrenDrawLists.push_back(window->DrawList);
+}
+
+void ImGuiEx::Canvas::ImGuiEndWindowHook()
+{
+}
+
+void ImGuiEx::Canvas::InstallBeginEndHooks()
+{
+    auto beginWindowHook = ImGuiContextHook{};
+    beginWindowHook.UserData = this;
+    beginWindowHook.Type = ImGuiContextHookType_BeginWindow;
+    beginWindowHook.Callback = []( ImGuiContext * context, ImGuiContextHook * hook )
+    {
+        auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+        canvas->ImGuiBeginWindowHook();
+    };
+    m_beginWindowHook = ImGui::AddContextHook( ImGui::GetCurrentContext(), &beginWindowHook );
+
+    auto endWindowHook = ImGuiContextHook{};
+    endWindowHook.UserData = this;
+    endWindowHook.Type = ImGuiContextHookType_EndWindow;
+    endWindowHook.Callback = []( ImGuiContext * ctx, ImGuiContextHook * hook )
+    {
+        auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+        canvas->ImGuiEndWindowHook();
+    };
+    m_endWindowHook = ImGui::AddContextHook( ImGui::GetCurrentContext(), &endWindowHook );
+}
+void ImGuiEx::Canvas::RemoveBeginEndHooks()
+{
+    ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_beginWindowHook );
+    ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_endWindowHook );
+}
+
+#endif
+
 
 void ImGuiEx::Canvas::End()
 {
@@ -180,6 +225,10 @@ void ImGuiEx::Canvas::End()
     //m_DrawList->AddRect(m_WidgetPosition - ImVec2(1.0f, 1.0f), m_WidgetPosition + m_WidgetSize + ImVec2(1.0f, 1.0f), IM_COL32(196, 0, 0, 255));
 
     m_InBeginEnd = false;
+
+#ifdef HKCN1
+    RemoveBeginEndHooks();
+#endif
 }
 
 void ImGuiEx::Canvas::SetView(const ImVec2& origin, float scale)

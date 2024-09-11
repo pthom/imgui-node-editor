@@ -55,6 +55,9 @@
 #define IMGUIEX_CANVAS_API
 #endif
 
+#define HKCN1
+
+
 namespace ImGuiEx {
 
 struct CanvasView
@@ -197,6 +200,17 @@ struct Canvas
     //
     // See: Suspend()/Resume()
     bool IsSuspended() const { return m_SuspendCounter > 0; }
+
+#ifdef HKCN1
+    void InstallBeginEndHooks();
+    void RemoveBeginEndHooks();
+
+    void ImGuiBeginWindowHook();
+    void ImGuiEndWindowHook();
+
+    ImGuiID m_beginWindowHook = 0;
+    ImGuiID m_endWindowHook = 0;
+#endif
 
 private:
 # define IMGUI_EX_CANVAS_DEFERED() 0
