@@ -121,7 +121,7 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
 
     ImGui::SetCursorScreenPos(ImVec2(0.0f, 0.0f));
 
-# if IMGUI_EX_CANVAS_DEFERED()
+# if IMGUI_EX_CANVAS_DEFERED() // dead code
     m_Ranges.resize(0);
 # endif
 
@@ -452,7 +452,7 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     auto clipped_clip_rect = m_DrawList->_ClipRectStack.back();
     ImGui::PopClipRect();
 
-# if IMGUI_EX_CANVAS_DEFERED()
+# if IMGUI_EX_CANVAS_DEFERED() // dead code
     m_Ranges.resize(m_Ranges.Size + 1);
     m_CurrentRange = &m_Ranges.back();
     m_CurrentRange->BeginComandIndex = ImMax(m_DrawList->CmdBuffer.Size, 0);
@@ -524,7 +524,7 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
 {
     IM_ASSERT(m_DrawList->_Splitter._Current == m_ExpectedChannel);
 
-# if IMGUI_EX_CANVAS_DEFERED()
+# if IMGUI_EX_CANVAS_DEFERED() // dead code
     IM_ASSERT(m_CurrentRange != nullptr);
 
     m_CurrentRange->EndVertexIndex  = m_DrawList->_VtxCurrentIdx + ImVtxOffsetRef(m_DrawList);

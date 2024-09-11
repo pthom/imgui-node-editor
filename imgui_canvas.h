@@ -213,9 +213,10 @@ struct Canvas
 #endif
 
 private:
+// IMGUI_EX_CANVAS_DEFERED is probably related to dead code: apart from filling/emptying m_Ranges and m_CurrentRange, it will not use them.
 # define IMGUI_EX_CANVAS_DEFERED() 0
 
-# if IMGUI_EX_CANVAS_DEFERED()
+# if IMGUI_EX_CANVAS_DEFERED()  // dead code
     struct Range
     {
         int BeginVertexIndex = 0;
@@ -246,6 +247,7 @@ private:
     int m_ExpectedChannel = 0;
 
 # if IMGUI_EX_CANVAS_DEFERED()
+# if IMGUI_EX_CANVAS_DEFERED() // dead code
     ImVector<Range> m_Ranges;
     Range* m_CurrentRange = nullptr;
 # endif
