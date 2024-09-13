@@ -210,6 +210,18 @@ struct Canvas
 
     ImGuiID m_beginWindowHook = 0;
     ImGuiID m_endWindowHook = 0;
+
+    void TransformInnerWindowsDrawCommands();
+
+    ImGuiWindow * m_WindowContainingCanvas = nullptr;
+
+    struct InnerWindowInfo
+    {
+        ImGuiWindow*    Window;
+        ImVec2          PosInCanvas;
+    };
+    ImVector<InnerWindowInfo> m_InnerWindows;
+    //ImVector<InnerWindowInfo> m_InnerWindowsLastFrame;
 #endif
 
 private:
@@ -237,43 +249,42 @@ private:
     void EnterLocalSpace();
     void LeaveLocalSpace();
 
-    bool m_InBeginEnd = false;
+    bool m_InBeginEnd = false; // global
 
-    ImVec2 m_WidgetPosition;
-    ImVec2 m_WidgetSize;
-    ImRect m_WidgetRect;
+    ImVec2 m_WidgetPosition; // global
+    ImVec2 m_WidgetSize; // global
+    ImRect m_WidgetRect; // global
 
-    ImDrawList* m_DrawList = nullptr;
-    int m_ExpectedChannel = 0;
+    ImDrawList* m_DrawList = nullptr; // local
+    int m_ExpectedChannel = 0; // local
 
-# if IMGUI_EX_CANVAS_DEFERED()
 # if IMGUI_EX_CANVAS_DEFERED() // dead code
     ImVector<Range> m_Ranges;
     Range* m_CurrentRange = nullptr;
 # endif
 
-    int m_DrawListFirstCommandIndex = 0;
-    int m_DrawListCommadBufferSize = 0;
-    int m_DrawListStartVertexIndex = 0;
+    int m_DrawListFirstCommandIndex = 0; // local
+    int m_DrawListCommadBufferSize = 0; // local
+    int m_DrawListStartVertexIndex = 0; // local
 
-    CanvasView  m_View;
-    ImRect      m_ViewRect;
+    CanvasView  m_View; // global
+    ImRect      m_ViewRect; // global
 
-    ImVec2 m_ViewTransformPosition;
+    ImVec2 m_ViewTransformPosition; // global
 
-    int m_SuspendCounter = 0;
+    int m_SuspendCounter = 0; // global
 
-    float m_LastFringeScale = 1.0f;
+    float m_LastFringeScale = 1.0f; // local (although this scale ought to be global)
 
-    ImVec2 m_MousePosBackup;
-    ImVec2 m_MousePosPrevBackup;
-    ImVec2 m_MouseClickedPosBackup[IM_ARRAYSIZE(ImGuiIO::MouseClickedPos)];
-    ImVec2 m_WindowCursorMaxBackup;
+    ImVec2 m_MousePosBackup; // global
+    ImVec2 m_MousePosPrevBackup; // global
+    ImVec2 m_MouseClickedPosBackup[IM_ARRAYSIZE(ImGuiIO::MouseClickedPos)]; // global
+    ImVec2 m_WindowCursorMaxBackup; // local
 
 # if defined(IMGUI_HAS_VIEWPORT)
-    ImVec2 m_WindowPosBackup;
-    ImVec2 m_ViewportPosBackup;
-    ImVec2 m_ViewportSizeBackup;
+    ImVec2 m_WindowPosBackup; // local
+    ImVec2 m_ViewportPosBackup;  // global **and** make sure all windows use the same viewport!!! (only handle windows that the same viewport?)
+     ImVec2 m_ViewportSizeBackup;
     ImVec2 m_ViewportWorkPosBackup;
     ImVec2 m_ViewportWorkSizeBackup;
 # endif

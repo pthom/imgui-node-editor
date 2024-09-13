@@ -99,6 +99,10 @@ bool ImGuiEx::Canvas::Begin(const char* id, const ImVec2& size)
 
 bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
 {
+    // HKCN1
+    m_InnerWindows.clear();
+    m_WindowContainingCanvas = ImGui::GetCurrentWindow();
+
     IM_ASSERT(m_InBeginEnd == false);
 
     m_WidgetPosition = ImGui::GetCursorScreenPos();
@@ -154,6 +158,38 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
 #ifdef HKCN1
 void ImGuiEx::Canvas::ImGuiBeginWindowHook()
 {
+    ImGuiWindow * innerWindow = ImGui::GetCurrentWindow();
+    //    ImVec2 windowPosInCanvas; // ideally, should be ImGui::GetCursorScreenPos() before the window was created
+    //    {
+    //        windowPosInCanvas = m_WindowContainingCanvas->DC.CursorPos;
+    //    }
+    ImVec2 posInInnerWindow = ImGui::GetCursorScreenPos();
+
+    //ImVec2 p = innerWindow->Pos;
+//    innerWindow->Pos.x = innerWindow->Pos.x * m_View.Scale + m_ViewTransformPosition.x;
+//    innerWindow->Pos.y = innerWindow->Pos.y * m_View.Scale + m_ViewTransformPosition.y;
+//    innerWindow->Size.x = m_View.Scale * innerWindow->Size.x;
+//    innerWindow->Size.y = m_View.Scale * innerWindow->Size.y;
+//    innerWindow->ContentSize.x = m_View.Scale * innerWindow->ContentSize.x;
+//    innerWindow->ContentSize.y = m_View.Scale * innerWindow->ContentSize.y;
+//    innerWindow->ContentSizeIdeal.x = m_View.Scale * innerWindow->ContentSizeIdeal.x;
+//    innerWindow->ContentSizeIdeal.y = m_View.Scale * innerWindow->ContentSizeIdeal.y;
+//    innerWindow->ContentSizeExplicit.x = m_View.Scale * innerWindow->ContentSizeExplicit.x;
+//    innerWindow->ContentSizeExplicit.y = m_View.Scale * innerWindow->ContentSizeExplicit.y;
+
+//    innerWindow->OuterRectClipped.Min.x = m_View.Scale * innerWindow->OuterRectClipped.Min.x;
+//    innerWindow->OuterRectClipped.Min.y = m_View.Scale * innerWindow->OuterRectClipped.Min.y;
+//    innerWindow->OuterRectClipped.Max.x = m_View.Scale * innerWindow->OuterRectClipped.Max.x;
+//    innerWindow->OuterRectClipped.Max.y = m_View.Scale * innerWindow->OuterRectClipped.Max.y;
+
+
+    //windowPosInCanvas = ?;
+
+    m_InnerWindows.push_back({
+        innerWindow,
+        posInInnerWindow
+        //windowPosInCanvas
+    });
 }
 
 void ImGuiEx::Canvas::ImGuiEndWindowHook()
@@ -186,6 +222,42 @@ void ImGuiEx::Canvas::RemoveBeginEndHooks()
 {
     ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_beginWindowHook );
     ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_endWindowHook );
+}
+
+void ImGuiEx::Canvas::TransformInnerWindowsDrawCommands()
+{
+    // (Called by LeaveLocalSpace)
+
+    for (InnerWindowInfo& inner_window_info: m_InnerWindows)
+    {
+        //ImGuiWindow* inner_window = inner_window_info.Window;
+
+        //inner_window->Pos.x = inner_window->Pos.x * m_View.Scale + m_ViewTransformPosition.x;
+
+        ImDrawList* inner_draw_list = inner_window_info.Window->DrawList;
+
+        // Get the start and end of vertices in the draw list for this window
+        auto vertex    = inner_draw_list->VtxBuffer.Data;
+        auto vertexEnd = inner_draw_list->VtxBuffer.Data + inner_draw_list->_VtxCurrentIdx + ImVtxOffsetRef(m_DrawList);
+
+        // Transform the vertices to canvas space
+        while (vertex < vertexEnd)
+        {
+            vertex->pos.x = vertex->pos.x * m_View.Scale + m_ViewTransformPosition.x;
+            vertex->pos.y = vertex->pos.y * m_View.Scale + m_ViewTransformPosition.y;
+            ++vertex;
+        }
+
+        // Move clip rectangles to canvas space
+        for (int i = 0; i < inner_draw_list->CmdBuffer.size(); ++i)
+        {
+            auto& command = inner_draw_list->CmdBuffer[i];
+            command.ClipRect.x = command.ClipRect.x * m_View.Scale + m_ViewTransformPosition.x;
+            command.ClipRect.y = command.ClipRect.y * m_View.Scale + m_ViewTransformPosition.y;
+            command.ClipRect.z = command.ClipRect.z * m_View.Scale + m_ViewTransformPosition.x;
+            command.ClipRect.w = command.ClipRect.w * m_View.Scale + m_ViewTransformPosition.y;
+        }
+    }
 }
 
 #endif
@@ -632,6 +704,8 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
         if (idxCommand_ImDrawCallback_ImCanvas >= 0)
             m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + idxCommand_ImDrawCallback_ImCanvas);
     }
+
+    TransformInnerWindowsDrawCommands();
 
     auto& fringeScale = ImFringeScaleRef(m_DrawList);
     fringeScale = m_LastFringeScale;
