@@ -32,6 +32,11 @@
 #     define ImDrawCallback_ImCanvas        (ImDrawCallback)(-2)
 # endif
 
+// [ADAPT_IMGUI_BUNDLE] inform that child windows are incompatible with imgui-node-editor (cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-2404714757)
+void Priv_ImGuiNodeEditor_EnterCanvas();
+void Priv_ImGuiNodeEditor_ExitCanvas();
+// [/ADAPT_IMGUI_BUNDLE]
+
 namespace ImCanvasDetails {
 
 DECLARE_HAS_MEMBER(HasFringeScale, _FringeScale);
@@ -241,7 +246,6 @@ void ImGuiEx::Canvas::End()
         ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_endWindowHook );
     }
     // [/ADAPT_IMGUI_BUNDLE]
-
 }
 
 void ImGuiEx::Canvas::SetView(const ImVec2& origin, float scale)
@@ -533,6 +537,9 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     auto& fringeScale = ImFringeScaleRef(m_DrawList);
     m_LastFringeScale = fringeScale;
     fringeScale *= m_View.InvScale;
+
+    // [ADAPT_IMGUI_BUNDLE] inform that child windows are incompatible with imgui-node-editor (cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-2404714757)
+    Priv_ImGuiNodeEditor_EnterCanvas();
 }
 
 void ImGuiEx::Canvas::LeaveLocalSpace()
@@ -656,4 +663,7 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
 
     RestoreInputState();
     RestoreViewportState();
+
+    // [ADAPT_IMGUI_BUNDLE] inform that child windows are incompatible with imgui-node-editor (cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-2404714757)
+    Priv_ImGuiNodeEditor_ExitCanvas();
 }
