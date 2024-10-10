@@ -145,6 +145,60 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
 
     m_InBeginEnd = true;
 
+    // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow, cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
+    {
+        auto beginWindowHook = ImGuiContextHook{};
+        beginWindowHook.UserData = this;
+        beginWindowHook.Type = ImGuiContextHookType_BeginWindow;
+        beginWindowHook.Callback = []( ImGuiContext * context, ImGuiContextHook * hook )
+        {
+            //ImGui::SetNextWindowViewport( ImGui::GetCurrentWindow()->Viewport->ID );
+
+            auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+            if ( canvas->m_SuspendCounter == 0 )
+            {
+                if ( ( context->NextWindowData.Flags & ImGuiNextWindowDataFlags_HasPos ) != 0 )
+                {
+                    auto pos = canvas->FromLocal( context->NextWindowData.PosVal );
+                    ImGui::SetNextWindowPos( pos, context->NextWindowData.PosCond, context->NextWindowData.PosPivotVal );
+                }
+
+                if ( context->BeginPopupStack.size() )
+                {
+                    auto & popup = context->BeginPopupStack.back();
+                    popup.OpenPopupPos = canvas->FromLocal( popup.OpenPopupPos );
+                    popup.OpenMousePos = canvas->FromLocal( popup.OpenMousePos );
+                }
+
+                if ( context->OpenPopupStack.size() )
+                {
+                    auto & popup = context->OpenPopupStack.back();
+                    popup.OpenPopupPos = canvas->FromLocal( popup.OpenPopupPos );
+                    popup.OpenMousePos = canvas->FromLocal( popup.OpenMousePos );
+                }
+
+            }
+            canvas->m_BeginWindowCursorBackup = ImGui::GetCursorScreenPos();
+            canvas->Suspend();
+        };
+
+        m_beginWindowHook = ImGui::AddContextHook( ImGui::GetCurrentContext(), &beginWindowHook );
+
+        auto endWindowHook = ImGuiContextHook{};
+        endWindowHook.UserData = this;
+        endWindowHook.Type = ImGuiContextHookType_EndWindow;
+        endWindowHook.Callback = []( ImGuiContext * ctx, ImGuiContextHook * hook )
+        {
+            auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+            canvas->Resume();
+            ImGui::SetCursorScreenPos( canvas->m_BeginWindowCursorBackup );
+            ImGui::GetCurrentWindow()->DC.IsSetPos = false;
+        };
+
+        m_endWindowHook = ImGui::AddContextHook( ImGui::GetCurrentContext(), &endWindowHook );
+    }
+    // [/ADAPT_IMGUI_BUNDLE]
+
     return true;
 }
 
@@ -180,6 +234,14 @@ void ImGuiEx::Canvas::End()
     //m_DrawList->AddRect(m_WidgetPosition - ImVec2(1.0f, 1.0f), m_WidgetPosition + m_WidgetSize + ImVec2(1.0f, 1.0f), IM_COL32(196, 0, 0, 255));
 
     m_InBeginEnd = false;
+
+    // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow, cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
+    {
+        ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_beginWindowHook );
+        ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_endWindowHook );
+    }
+    // [/ADAPT_IMGUI_BUNDLE]
+
 }
 
 void ImGuiEx::Canvas::SetView(const ImVec2& origin, float scale)

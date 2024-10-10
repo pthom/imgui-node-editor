@@ -261,7 +261,12 @@ private:
     ImVec2 m_ViewportWorkPosBackup;
     ImVec2 m_ViewportWorkSizeBackup;
 # endif
-};
+
+    // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow, cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
+    ImGuiID m_beginWindowHook, m_endWindowHook;
+    ImVec2 m_BeginWindowCursorBackup;
+    // [/ADAPT_IMGUI_BUNDLE]
+    };
 
 } // namespace ImGuiEx
 
