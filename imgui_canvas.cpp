@@ -160,6 +160,11 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
             //ImGui::SetNextWindowViewport( ImGui::GetCurrentWindow()->Viewport->ID );
 
             auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+
+            canvas->m_BeginWindowDepth += 1;
+            if (canvas->m_BeginWindowDepth > 1)
+                return;
+
             if ( canvas->m_SuspendCounter == 0 )
             {
                 if ( ( context->NextWindowData.Flags & ImGuiNextWindowDataFlags_HasPos ) != 0 )
@@ -195,6 +200,11 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
         endWindowHook.Callback = []( ImGuiContext * ctx, ImGuiContextHook * hook )
         {
             auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+
+            canvas->m_BeginWindowDepth -= 1;
+            if (canvas->m_BeginWindowDepth > 0)
+                return;
+
             canvas->Resume();
             ImGui::SetCursorScreenPos( canvas->m_BeginWindowCursorBackup );
             ImGui::GetCurrentWindow()->DC.IsSetPos = false;

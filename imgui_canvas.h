@@ -265,6 +265,7 @@ private:
     // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow, cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
     ImGuiID m_beginWindowHook, m_endWindowHook;
     ImVec2 m_BeginWindowCursorBackup;
+    int m_BeginWindowDepth = 0;
     // [/ADAPT_IMGUI_BUNDLE]
     };
 
