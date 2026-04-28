@@ -47,6 +47,43 @@ Note: Project recently was restructured to mimic ImGui layout.
 
 Please report issues or questions if something isn't clear.
 
+## Default Bindings
+
+The editor reacts to the following mouse and keyboard inputs out of the box.
+Mouse buttons are configurable via `Config::DragButtonIndex`,
+`SelectButtonIndex`, `NavigateButtonIndex` and `ContextMenuButtonIndex`
+(defaults: left button for drag/select, right button for navigate/context).
+Keyboard shortcuts only fire when `AreShortcutsEnabled()` returns `true`.
+
+### Mouse
+
+| Input                                | Action                                                                |
+|--------------------------------------|-----------------------------------------------------------------------|
+| Left click on background             | Clear selection                                                       |
+| Left click on node or link           | Select that object (replaces selection)                               |
+| `Ctrl` + left click                  | Toggle the clicked object in or out of the selection                  |
+| Left drag on background              | Rubber-band select nodes                                              |
+| `Shift` + left drag on background    | Rubber-band select Group nodes                                        |
+| `Alt` + left drag on background      | Rubber-band select links                                              |
+| `Ctrl` + left drag (rubber band)     | Keep the previous selection while lassoing                            |
+| Left drag on a node                  | Move the node (and members of any selected Group)                     |
+| `Shift` + left drag on a node        | Move only the directly-selected nodes                                 |
+| Right drag                           | Pan the canvas                                                        |
+| Right click                          | Open the context menu                                                 |
+| Mouse wheel                          | Zoom in or out (smooth zoom controlled by `Config::EnableSmoothZoom`) |
+| Double-click on a link / background  | Forwarded to the user via the link/background double-click queries    |
+
+### Keyboard
+
+| Input                          | Action                                                            |
+|--------------------------------|-------------------------------------------------------------------|
+| `F` over a node, pin or Group  | Center that object                                                |
+| `F` with a non-empty selection | Center selection                                                  |
+| `F` over the empty background  | Center all content                                                |
+| `Shift` + `F`                  | Same as `F`, but zooms the targeted object or selection           |
+| `Space`                        | Open the context menu at the mouse position                       |
+| `Ctrl` + `X` / `C` / `V` / `D` | Cut / Copy / Paste / Duplicate (forwarded as actions to the user) |
+
 ## Dependencies
 
  * Vanilla ImGui 1.72+
