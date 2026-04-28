@@ -454,7 +454,11 @@ IMGUI_NODE_EDITOR_API ImDrawList* GetNodeBackgroundDrawList(NodeId nodeId);
 
 // Declares an existing link between two pins. Call once per frame for every
 // link you want shown. Returns true if the link is currently visible/active.
-IMGUI_NODE_EDITOR_API bool Link(LinkId id, PinId startPinId, PinId endPinId, const ImVec4& color = ImVec4(1, 1, 1, 1), float thickness = 1.0f);
+// `color` default is the sentinel ImVec4(0,0,0,0) ("auto"): when alpha is 0
+// the implementation substitutes the current ImGuiCol_Text, so links stay
+// readable on both light and dark themes. Pass any non-zero-alpha color to
+// override.
+IMGUI_NODE_EDITOR_API bool Link(LinkId id, PinId startPinId, PinId endPinId, const ImVec4& color = ImVec4(0, 0, 0, 0), float thickness = 1.0f);
 
 // Trigger a one-shot animated "flow" pulse along a link. Calling this once
 // is enough; the editor handles the time-bounded animation internally.
@@ -480,7 +484,7 @@ IMGUI_NODE_EDITOR_API void Flow(LinkId linkId, FlowDirection direction = FlowDir
 //
 // The QueryNewLink/QueryNewNode/AcceptNewItem overloads taking a color and
 // thickness customize the in-progress link's drawing while the user drags.
-IMGUI_NODE_EDITOR_API bool BeginCreate(const ImVec4& color = ImVec4(1, 1, 1, 1), float thickness = 1.0f);
+IMGUI_NODE_EDITOR_API bool BeginCreate(const ImVec4& color = ImVec4(0, 0, 0, 0), float thickness = 1.0f);
 IMGUI_NODE_EDITOR_API bool QueryNewLink(PinId* startId, PinId* endId);
 IMGUI_NODE_EDITOR_API bool QueryNewLink(PinId* startId, PinId* endId, const ImVec4& color, float thickness = 1.0f);
 IMGUI_NODE_EDITOR_API bool QueryNewNode(PinId* pinId);

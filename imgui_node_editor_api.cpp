@@ -231,9 +231,18 @@ ImDrawList* ax::NodeEditor::GetNodeBackgroundDrawList(NodeId nodeId)
         return nullptr;
 }
 
-bool ax::NodeEditor::Link(LinkId id, PinId startPinId, PinId endPinId, const ImVec4& color/* = ImVec4(1, 1, 1, 1)*/, float thickness/* = 1.0f*/)
+// Sentinel: alpha == 0 means "auto-pick a theme-friendly color"
+// (resolved to ImGuiCol_Text so links stay readable on light AND dark themes).
+static ImVec4 ResolveAutoLinkColor(const ImVec4& color)
 {
-    return s_Editor->DoLink(id, startPinId, endPinId, ImColor(color), thickness);
+    if (color.w == 0.0f)
+        return ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    return color;
+}
+
+bool ax::NodeEditor::Link(LinkId id, PinId startPinId, PinId endPinId, const ImVec4& color/* = ImVec4(0, 0, 0, 0)*/, float thickness/* = 1.0f*/)
+{
+    return s_Editor->DoLink(id, startPinId, endPinId, ImColor(ResolveAutoLinkColor(color)), thickness);
 }
 
 void ax::NodeEditor::Flow(LinkId linkId, FlowDirection direction)
@@ -248,7 +257,7 @@ bool ax::NodeEditor::BeginCreate(const ImVec4& color, float thickness)
 
     if (context.Begin())
     {
-        context.SetStyle(ImColor(color), thickness);
+        context.SetStyle(ImColor(ResolveAutoLinkColor(color)), thickness);
         return true;
     }
     else
