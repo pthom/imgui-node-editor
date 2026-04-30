@@ -259,6 +259,13 @@ private:
     ImVec2 m_ViewportWorkPosBackup;
     ImVec2 m_ViewportWorkSizeBackup;
 # endif
+
+    // Context hooks that suspend the canvas when a window is begun from inside it (see Begin())
+# if defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
+    ImGuiID m_beginWindowHook, m_endWindowHook;
+    ImVec2 m_BeginWindowCursorBackup;
+    int m_BeginWindowDepth = 0;
+# endif
 };
 
 } // namespace ImGuiEx
