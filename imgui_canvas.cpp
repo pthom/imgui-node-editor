@@ -166,6 +166,43 @@ void ImGuiEx::Canvas::End()
 
     LeaveLocalSpace();
 
+    // Sentinel-keyed clip-rect transform (post-merge).
+    // By now the node editor has merged all channels (it calls ChannelsMerge() before Canvas::End),
+    // so command order is final. Walk the buffer: a BEGIN sentinel (UserCallbackData==nullptr) opens
+    // a canvas local-space region, an END sentinel (UserCallbackData==(void*)1) closes it. Transform
+    // the clip rect of every command inside a region exactly once (vertices were already transformed
+    // in LeaveLocalSpace), then remove all sentinels (they must not reach the backend).
+    {
+        int depth = 0;
+        for (int i = 0; i < m_DrawList->CmdBuffer.Size; ++i)
+        {
+            ImDrawCmd& cmd = m_DrawList->CmdBuffer[i];
+            if (cmd.UserCallback == ImDrawCallback_ImCanvas)
+            {
+                if (cmd.UserCallbackData == nullptr)
+                    ++depth;   // BEGIN
+                else
+                    --depth;   // END
+                continue;
+            }
+            if (depth > 0)
+            {
+                cmd.ClipRect.x = cmd.ClipRect.x * m_View.Scale + m_ViewTransformPosition.x;
+                cmd.ClipRect.y = cmd.ClipRect.y * m_View.Scale + m_ViewTransformPosition.y;
+                cmd.ClipRect.z = cmd.ClipRect.z * m_View.Scale + m_ViewTransformPosition.x;
+                cmd.ClipRect.w = cmd.ClipRect.w * m_View.Scale + m_ViewTransformPosition.y;
+            }
+        }
+        // Remove all sentinels (they must not reach the backend).
+        for (auto it = m_DrawList->CmdBuffer.begin(); it != m_DrawList->CmdBuffer.end(); )
+        {
+            if (it->UserCallback == ImDrawCallback_ImCanvas)
+                it = m_DrawList->CmdBuffer.erase(it);
+            else
+                ++it;
+        }
+    }
+
     ImGui::GetCurrentWindow()->DC.CursorMaxPos = m_WindowCursorMaxBackup;
 
 # if IMGUI_VERSION_NUM < 18967
@@ -272,7 +309,9 @@ void ImGuiEx::Canvas::Suspend()
     IM_ASSERT(m_DrawList->_Splitter._Current == m_ExpectedChannel);
 
     if (m_SuspendCounter == 0)
+    {
         LeaveLocalSpace();
+    }
 
     ++m_SuspendCounter;
 }
@@ -411,26 +450,16 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     m_CurrentRange->BeginComandIndex = ImMax(m_DrawList->CmdBuffer.Size, 0);
     m_CurrentRange->BeginVertexIndex = m_DrawList->_VtxCurrentIdx + ImVtxOffsetRef(m_DrawList);
 # endif
-    m_DrawListCommadBufferSize       = ImMax(m_DrawList->CmdBuffer.Size, 0);
     m_DrawListStartVertexIndex       = m_DrawList->_VtxCurrentIdx + ImVtxOffsetRef(m_DrawList);
 
-    // Make sure we do not share draw command with anyone. We don't want to mess
-    // with someones clip rectangle.
-
-    // #FIXME:
-    //     This condition is not enough to avoid when user choose
-    //     to use channel splitter.
-    //
-    //     To deal with Suspend()/Resume() calls empty draw command
-    //     is always added then splitter is active. Otherwise
-    //     channel merger will collapse our draw command one with
-    //     different clip rectangle.
-    //
-    //     More investigation is needed. To get to the bottom of this.
-    if ((!m_DrawList->CmdBuffer.empty() && m_DrawList->CmdBuffer.back().ElemCount > 0) || m_DrawList->_Splitter._Count > 1)
-        m_DrawList->AddCallback(ImDrawCallback_ImCanvas, nullptr);
-
-    m_DrawListFirstCommandIndex = ImMax(m_DrawList->CmdBuffer.Size - 1, 0);
+    // Insert a BEGIN sentinel (ImDrawCallback_ImCanvas, UserCallbackData==nullptr)
+    // plus a fresh draw command to isolate this scope's canvas content (prevents clip-rect leakage /
+    // command merging across the canvas boundary). LeaveLocalSpace() adds a matching END sentinel;
+    // Canvas::End() walks BEGIN..END regions post-merge to transform their clip rects local->screen
+    // exactly once. Sentinels are used as boundary markers because they travel with their commands
+    // through the node editor's channel merges, whereas captured command indices do not.
+    m_DrawList->AddCallback(ImDrawCallback_ImCanvas, nullptr);
+    m_DrawList->AddDrawCmd();
 
 # if defined(IMGUI_HAS_VIEWPORT)
     auto window = ImGui::GetCurrentWindow();
@@ -490,11 +519,15 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
     m_CurrentRange = nullptr;
 # endif
 
-    // Move vertices to screen space.
+    // Transform vertices to screen space inline: the vertex buffer is
+    // append-only and is never reordered by the node editor's channel merges, so the recorded
+    // vertex range stays valid here.
+    // Clip rects are intentionally NOT transformed here: command indices ARE reordered by channel
+    // merges, so transforming them by index mid-frame double/under-counts and drops geometry when
+    // the view is panned/zoomed. Instead we mark this scope's end with a sentinel and transform
+    // clip rects once, post-merge, in End() (sentinels travel with their commands through merges).
     auto vertex    = m_DrawList->VtxBuffer.Data + m_DrawListStartVertexIndex;
     auto vertexEnd = m_DrawList->VtxBuffer.Data + m_DrawList->_VtxCurrentIdx + ImVtxOffsetRef(m_DrawList);
-
-    // If canvas view is not scaled take a faster path.
     if (m_View.Scale != 1.0f)
     {
         while (vertex < vertexEnd)
@@ -502,16 +535,6 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
             vertex->pos.x = vertex->pos.x * m_View.Scale + m_ViewTransformPosition.x;
             vertex->pos.y = vertex->pos.y * m_View.Scale + m_ViewTransformPosition.y;
             ++vertex;
-        }
-
-        // Move clip rectangles to screen space.
-        for (int i = m_DrawListFirstCommandIndex; i < m_DrawList->CmdBuffer.size(); ++i)
-        {
-            auto& command = m_DrawList->CmdBuffer[i];
-            command.ClipRect.x = command.ClipRect.x * m_View.Scale + m_ViewTransformPosition.x;
-            command.ClipRect.y = command.ClipRect.y * m_View.Scale + m_ViewTransformPosition.y;
-            command.ClipRect.z = command.ClipRect.z * m_View.Scale + m_ViewTransformPosition.x;
-            command.ClipRect.w = command.ClipRect.w * m_View.Scale + m_ViewTransformPosition.y;
         }
     }
     else
@@ -522,26 +545,12 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
             vertex->pos.y = vertex->pos.y + m_ViewTransformPosition.y;
             ++vertex;
         }
-
-        // Move clip rectangles to screen space.
-        for (int i = m_DrawListFirstCommandIndex; i < m_DrawList->CmdBuffer.size(); ++i)
-        {
-            auto& command = m_DrawList->CmdBuffer[i];
-            command.ClipRect.x = command.ClipRect.x + m_ViewTransformPosition.x;
-            command.ClipRect.y = command.ClipRect.y + m_ViewTransformPosition.y;
-            command.ClipRect.z = command.ClipRect.z + m_ViewTransformPosition.x;
-            command.ClipRect.w = command.ClipRect.w + m_ViewTransformPosition.y;
-        }
     }
 
-    // Remove sentinel draw command if present
-    if (m_DrawListCommadBufferSize > 0)
-    {
-        if (m_DrawList->CmdBuffer.size() > m_DrawListCommadBufferSize && m_DrawList->CmdBuffer[m_DrawListCommadBufferSize].UserCallback == ImDrawCallback_ImCanvas)
-            m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + m_DrawListCommadBufferSize);
-        else if (m_DrawList->CmdBuffer.size() >= m_DrawListCommadBufferSize && m_DrawList->CmdBuffer[m_DrawListCommadBufferSize - 1].UserCallback == ImDrawCallback_ImCanvas)
-            m_DrawList->CmdBuffer.erase(m_DrawList->CmdBuffer.Data + m_DrawListCommadBufferSize - 1);
-    }
+    // END sentinel for this local-space scope. EnterLocalSpace() added the
+    // BEGIN sentinel (ImDrawCallback_ImCanvas, UserCallbackData==nullptr); this END one uses
+    // UserCallbackData==(void*)1. End() pairs BEGIN/END post-merge to transform clip rects once.
+    m_DrawList->AddCallback(ImDrawCallback_ImCanvas, (void*)1);
 
     auto& fringeScale = ImFringeScaleRef(m_DrawList);
     fringeScale = m_LastFringeScale;
