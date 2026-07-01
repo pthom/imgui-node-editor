@@ -189,6 +189,7 @@ enum StyleVar
     StyleVar_SnapLinkToPinDir,
     StyleVar_HoveredNodeBorderOffset,
     StyleVar_SelectedNodeBorderOffset,
+    StyleVar_GridSize,
 
     StyleVar_Count
 };
@@ -222,6 +223,7 @@ struct Style
     float   GroupBorderWidth;
     float   HighlightConnectedLinks;
     float   SnapLinkToPinDir; // when true link will start on the line defined by pin direction
+    ImVec2  GridSize;         // size of a background grid cell, in canvas units (x and y independent)
     ImVec4  Colors[StyleColor_Count];
 
     Style()
@@ -253,6 +255,7 @@ struct Style
         GroupBorderWidth         = 1.0f;
         HighlightConnectedLinks  = 0.0f;
         SnapLinkToPinDir         = 0.0f;
+        GridSize                 = ImVec2(32.0f, 32.0f);
 
         Colors[StyleColor_Bg]                 = ImColor( 60,  60,  70, 200);
         Colors[StyleColor_Grid]               = ImColor(120, 120, 120,  40);
