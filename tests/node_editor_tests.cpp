@@ -589,15 +589,17 @@ static void CaptureApp(ImGuiTestContext* ctx, const char* test_name, const char*
     ctx->CaptureScreenshot(ImGuiCaptureFlags_HideMouseCursor);
 }
 
-// A popup must open inside the viewport, with its top left corner close to the expected screen position
+// A popup must open with its top left corner close to the expected screen position, and inside the application window
 static void CheckPopupPos(ImGuiTestContext* ctx, ImGuiWindow* popup, ImVec2 expected_pos, float tolerance)
 {
     IM_CHECK(popup != nullptr);
     ctx->LogInfo("zoom=%.2f popup pos=(%.0f,%.0f) expected=(%.0f,%.0f)", gScene.Zoom, popup->Pos.x, popup->Pos.y, expected_pos.x, expected_pos.y);
     IM_CHECK_LT(ImAbs(popup->Pos.x - expected_pos.x), tolerance);
     IM_CHECK_LT(ImAbs(popup->Pos.y - expected_pos.y), tolerance);
+    // (with multi-viewports, a popup may leave the application window: it then gets its own OS window)
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    IM_CHECK(ImRect(viewport->Pos, viewport->Pos + viewport->Size).Contains(popup->Rect()));
+    if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
+        IM_CHECK(ImRect(viewport->Pos, viewport->Pos + viewport->Size).Contains(popup->Rect()));
 }
 
 // Checks on what the editor added to the draw list, over all the frames since the counters were reset:
@@ -1019,6 +1021,104 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
         ctx->DockClear("Node editor tests", "Node editor tests (dock target)", NULL);
     };
 # endif
+
+    // ## Multi-viewports: the window of the editor is an OS window of its own (it sticks out of the application window)
+    t = IM_REGISTER_TEST(engine, "node_editor", "own_os_window");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
+        {
+            ctx->LogWarning("Multi-viewports are not enabled: test skipped");
+            return;
+        }
+        const float em = ImGui::GetFontSize();
+        const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+        ctx->WindowFocus("//Node editor tests");
+        ctx->WindowMove("//Node editor tests", main_viewport->Pos + ImVec2(main_viewport->Size.x - em * 20.0f, em * 4.0f));
+        ctx->Yield(10);
+        ImGuiWindow* window = ctx->GetWindowByRef("//Node editor tests");
+        IM_CHECK(window != nullptr);
+        IM_CHECK(window->Viewport != nullptr && window->Viewport->ID != main_viewport->ID);
+
+        RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
+        {
+            IM_UNUSED(view_name);   // no screenshot: a capture only shows the application window
+            gScene.ComboIdx = 0;
+            NodeItemClick(ctx, "combo");
+            CheckPopupPos(ctx, TopPopupWindow(), gScene.ItemRects["combo"].GetBL(), ImGui::GetFontSize());
+            ctx->ItemClick("//##Combo_00/CCCC");
+            IM_CHECK_EQ(gScene.ComboIdx, 2);
+
+            gScene.PlainPopupClicks = 0;
+            NodeItemClick(ctx, "open_popup");
+            ImGuiWindow* popup = TopPopupWindow();
+            CheckPopupPos(ctx, popup, NodeItemCenter("open_popup"), ImGui::GetFontSize());
+            if (popup == nullptr)
+                return;
+            ctx->SetRef(popup);
+            ctx->ItemClick("popup button");
+            IM_CHECK_EQ(gScene.PlainPopupClicks, 1);
+
+            ImStrncpy(gScene.Text, "Line 1", IM_ARRAYSIZE(gScene.Text));
+            ctx->PopupCloseAll();
+            NodeItemClick(ctx, "text");
+            popup = TopPopupWindow();
+            CheckPopupPos(ctx, popup, NodeItemCenter("text"), ImGui::GetFontSize());
+            if (popup == nullptr)
+                return;
+            ctx->SetRef(popup);
+            ctx->ItemClick("##edit");
+            ctx->KeyCharsReplace("typed in another OS window");
+            ctx->PopupCloseAll();
+            IM_CHECK_STR_EQ(gScene.Text, "typed in another OS window");
+        });
+
+        ctx->WindowMove("//Node editor tests", main_viewport->Pos + ImVec2(em * 54.0f, em * 2.0f));
+        ctx->Yield(5);
+    };
+
+    // ## Multi-viewports: a combo located at the bottom of the application window. Its popup leaves the application window,
+    // and becomes an OS window: it must still open right below the combo, and be usable
+    t = IM_REGISTER_TEST(engine, "node_editor", "popup_leaves_app_window");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
+        {
+            ctx->LogWarning("Multi-viewports are not enabled: test skipped");
+            return;
+        }
+        ctx->WindowFocus("//Node editor tests");
+        const float zooms[] = { 1.0f, 2.0f };
+        for (float zoom : zooms)
+        {
+            SetZoom(ctx, zoom);
+            BringIntoView(ctx, "combo");
+            for (int i = 0; i < 4; i++)   // pan until the combo is at the bottom of the canvas
+            {
+                const float delta_y = (gScene.CanvasRect.Max.y - ImGui::GetFontSize() * 1.0f) - gScene.ItemRects["combo"].Max.y;
+                if (ImAbs(delta_y) < 2.0f)
+                    break;
+                PanView(ctx, ImVec2(0.0f, ImClamp(delta_y, -gScene.CanvasRect.GetHeight() * 0.7f, gScene.CanvasRect.GetHeight() * 0.7f)));
+            }
+            IM_CHECK(gScene.CanvasRect.Contains(gScene.ItemRects["combo"]));
+
+            gScene.ComboIdx = 0;
+            ctx->MouseMoveToPos(NodeItemCenter("combo"));
+            ctx->MouseClick(0);
+            ctx->Yield(3);
+            ImGuiWindow* popup = TopPopupWindow();
+            CheckPopupPos(ctx, popup, gScene.ItemRects["combo"].GetBL(), ImGui::GetFontSize());
+            if (popup == nullptr)
+                return;
+            const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+            ctx->LogInfo("zoom=%.1f popup bottom=%.0f, application window bottom=%.0f, popup has its own OS window=%d", zoom, popup->Pos.y + popup->Size.y,
+                main_viewport->Pos.y + main_viewport->Size.y, (int)(popup->Viewport && popup->Viewport->ID != main_viewport->ID));
+            IM_CHECK(popup->Viewport != nullptr && popup->Viewport->ID != main_viewport->ID);
+            ctx->ItemClick("//##Combo_00/CCCC");
+            IM_CHECK_EQ(gScene.ComboIdx, 2);
+        }
+        SetZoom(ctx, 1.0f);
+    };
 
     // ## Context menus on a node and on the background (documented pattern, with Suspend / Resume)
     t = IM_REGISTER_TEST(engine, "node_editor", "context_menus");
