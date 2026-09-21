@@ -2,6 +2,12 @@
 
 [![build](https://github.com/thedmd/imgui-node-editor/actions/workflows/build.yml/badge.svg)](https://github.com/thedmd/imgui-node-editor/actions/workflows/build.yml)
 
+> **This is the fork used by [Dear ImGui Bundle](https://github.com/pthom/imgui_bundle).** It can be used without it.
+> See [what this fork adds](fork_imgui_bundle.md): popups, combos and multiline text inside nodes, node width, fixes, automated tests.
+>
+> The `imgui_bundle` branch is **rebased** when upstream moves (its history is rewritten): pin a tag (`bundle_YYYYMMDD`) or a commit
+> rather than tracking the branch.
+
 ## About
 
 An implementation of node editor with ImGui-like API.
