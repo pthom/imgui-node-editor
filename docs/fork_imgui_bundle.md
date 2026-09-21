@@ -221,6 +221,6 @@ an OS window of its own, and a combo whose popup leaves the application window. 
 clear `ImGuiBackendFlags_HasMouseHoveredViewport` at each frame: the platform backend reports which OS window is under the real
 mouse, while the test engine simulates the mouse.
 
-The CI of this repository (`.github/workflows/tests.yml`) does the same thing with a pinned commit of Dear ImGui Bundle, in which
-it replaces imgui-node-editor by the commit under test. A second job checks that the library compiles against a stock Dear ImGui
+The CI of this repository (`.github/workflows/tests.yml`) does the same thing with the `main` branch of Dear ImGui Bundle, in which
+it replaces imgui-node-editor by the commit under test. It also runs every week. A second job checks that the library compiles against a stock Dear ImGui
 (docking and master), that the patches of chapter 3 apply to it, and that the library compiles with the patched Dear ImGui.
