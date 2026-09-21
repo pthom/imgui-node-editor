@@ -3,8 +3,11 @@ include(FetchContent)
 if (NOT TARGET imgui)
     FetchContent_Declare(
         imgui
-        GIT_REPOSITORY      https://github.com/thedmd/imgui.git
-        GIT_TAG             b085dd8feac1595915d85243b5515af34a10a394 # feature/layout-external: Dear ImGui 1.93.0 WIP with Stack Layout v2.1
+        # Dear ImGui + stack layout + the two patches of misc/imgui_patches (see docs/fork_imgui_bundle.md),
+        # at a fixed tag: the branches "layouts" and "imgui_bundle" are rebased from time to time.
+        # Upstream fetches thedmd/imgui b085dd8feac1595915d85243b5515af34a10a394 (feature/layout-external).
+        GIT_REPOSITORY      https://github.com/pthom/imgui.git
+        GIT_TAG             bundle_20260921b
     )
 
     FetchContent_MakeAvailable(imgui)
