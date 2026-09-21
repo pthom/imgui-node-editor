@@ -32,6 +32,14 @@
 #     define ImDrawCallback_ImCanvas        (ImDrawCallback)(-2)
 # endif
 
+// The canvas which is currently in local space (between EnterLocalSpace() and LeaveLocalSpace()), if any
+static ImGuiEx::Canvas* s_CanvasInLocalSpace = nullptr;
+
+bool ImGuiEx::IsInsideCanvas()
+{
+    return s_CanvasInLocalSpace != nullptr;
+}
+
 namespace ImCanvasDetails {
 
 DECLARE_HAS_MEMBER(HasFringeScale, _FringeScale);
@@ -592,6 +600,8 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     auto& fringeScale = ImFringeScaleRef(m_DrawList);
     m_LastFringeScale = fringeScale;
     fringeScale *= m_View.InvScale;
+
+    s_CanvasInLocalSpace = this;
 }
 
 void ImGuiEx::Canvas::LeaveLocalSpace()
@@ -652,4 +662,6 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
 
     RestoreInputState();
     RestoreViewportState();
+
+    s_CanvasInLocalSpace = nullptr;
 }

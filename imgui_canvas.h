@@ -268,6 +268,10 @@ private:
 # endif
 };
 
+// True while a canvas is active: between Canvas::Begin() and Canvas::End(), except while it is suspended.
+// Positions are then in canvas space (not in screen space), and child windows cannot be used.
+bool IsInsideCanvas();
+
 } // namespace ImGuiEx
 
 # endif // __IMGUI_EX_CANVAS_H__
