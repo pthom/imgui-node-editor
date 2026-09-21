@@ -602,6 +602,10 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     fringeScale *= m_View.InvScale;
 
     s_CanvasInLocalSpace = this;
+# if defined(IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE)
+    // Inside the canvas, ImGui::InputTextMultiline() is replaced by a version that does not use a child window
+    ImGui::GetCurrentContext()->InputTextMultilineOverride = &ImGuiEx::CanvasInputTextMultiline;
+# endif
 }
 
 void ImGuiEx::Canvas::LeaveLocalSpace()
@@ -664,4 +668,161 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
     RestoreViewportState();
 
     s_CanvasInLocalSpace = nullptr;
+# if defined(IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE)
+    ImGui::GetCurrentContext()->InputTextMultilineOverride = NULL;
+# endif
+}
+
+//------------------------------------------------------------------------------
+// InputTextMultiline inside a canvas
+//------------------------------------------------------------------------------
+
+// A popup must be opened and begun while the canvas is suspended. With the BeginWindow / EndWindow hooks of Dear ImGui,
+// the canvas does it by itself; without them, we do it here.
+struct SuspendCanvasIfNoHook
+{
+# if !defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
+    ImGuiEx::Canvas* m_Canvas;
+    SuspendCanvasIfNoHook(): m_Canvas(s_CanvasInLocalSpace) { if (m_Canvas) m_Canvas->Suspend(); }
+    ~SuspendCanvasIfNoHook()                                { if (m_Canvas) m_Canvas->Resume(); }
+# endif
+};
+
+bool ImGuiEx::CanvasInputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
+{
+    using namespace ImGui;
+
+    if (s_CanvasInLocalSpace == nullptr)
+        return InputTextMultiline(label, buf, buf_size, size, flags, callback, user_data);
+
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    ImGuiStyle& style = g.Style;
+
+    PushID(label); // make sure to use unique ids
+    const ImGuiID box_id = window->GetID("##ml_box");
+
+    // Resolve the size exactly like the real multiline widget (default = 8 lines high),
+    // honoring SetNextItemWidth() through CalcItemWidth().
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const float default_h = g.FontSize * 8.0f + style.FramePadding.y * 2.0f;
+    const ImVec2 frame_size = CalcItemSize(size, CalcItemWidth(), default_h);
+
+    const ImVec2 frame_min = window->DC.CursorPos;
+    const ImRect frame_bb(frame_min, frame_min + frame_size);
+    const ImRect total_bb(frame_min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
+
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, box_id, &frame_bb))
+    {
+        PopID();
+        return false;
+    }
+
+    // Interaction: behave like any widget. ButtonBehavior takes ActiveId on press, so a drag
+    // started on the box does NOT move the node (you grab the node body/title instead).
+    bool hovered;
+    bool pressed = ButtonBehavior(frame_bb, box_id, &hovered, NULL);
+    if (hovered)
+        SetMouseCursor(ImGuiMouseCursor_TextInput);
+    // Open the popup on a click, but not when the press turned into a drag (e.g. dragging an
+    // external resize grip placed over the box) - otherwise the editor would pop open on resize.
+    if (pressed && !IsMouseDragPastThreshold(0))
+    {
+        SuspendCanvasIfNoHook suspend;
+        OpenPopup("##ml_edit");
+    }
+
+    // The popup being open means "edited elsewhere": keep the box highlighted and fade its
+    // text, so the link between the box and the popup stays obvious.
+    const bool editing = IsPopupOpen("##ml_edit");
+    const bool highlight = hovered || editing;
+
+    // Frame background + border. On highlight, blend FrameBg -> FrameBgHovered (theme-aware, subtle).
+    const ImU32 frame_col = highlight
+        ? GetColorU32(ImLerp(style.Colors[ImGuiCol_FrameBg], style.Colors[ImGuiCol_FrameBgHovered], 0.25f))
+        : GetColorU32(ImGuiCol_FrameBg);
+    RenderNavCursor(frame_bb, box_id);
+    RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, style.FrameRounding);
+
+    // Draw the text, clipped to the inner area (no word-wrap, like the real widget).
+    const ImRect inner_bb(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding);
+    const float line_h = g.FontSize;
+    const ImU32 text_col = GetColorU32(ImGuiCol_Text, editing ? 0.5f : 1.0f);
+    const char* text_end = buf + strlen(buf);
+    window->DrawList->PushClipRect(inner_bb.Min, inner_bb.Max, true);
+    {
+        const char* s = buf;
+        ImVec2 pos = inner_bb.Min;
+        int n_lines = 0;
+        bool horiz_overflow = false;
+        while (s <= text_end)
+        {
+            const char* line_end = strchr(s, '\n');
+            if (line_end == NULL)
+                line_end = text_end;
+            if (pos.y > inner_bb.Max.y) // stop drawing once below the visible area
+                { n_lines++; break; }
+            window->DrawList->AddText(pos, text_col, s, line_end);
+            if (CalcTextSize(s, line_end).x > inner_bb.GetWidth())
+                horiz_overflow = true;
+            pos.y += line_h;
+            n_lines++;
+            if (line_end == text_end)
+                break;
+            s = line_end + 1;
+        }
+
+        // Overflow hints: fade the box fill back in along each clipped edge.
+        const ImU32 c_transp = frame_col & ~IM_COL32_A_MASK;
+        if ((float)n_lines * line_h > inner_bb.GetHeight() + 1.0f)
+        {
+            const float fade_h = ImMin(line_h, inner_bb.GetHeight());
+            window->DrawList->AddRectFilledMultiColor(
+                ImVec2(frame_bb.Min.x, frame_bb.Max.y - fade_h), frame_bb.Max,
+                c_transp, c_transp, frame_col, frame_col);
+        }
+        if (horiz_overflow)
+        {
+            const float fade_w = ImMin(line_h * 1.5f, inner_bb.GetWidth());
+            window->DrawList->AddRectFilledMultiColor(
+                ImVec2(frame_bb.Max.x - fade_w, frame_bb.Min.y), frame_bb.Max,
+                c_transp, frame_col, frame_col, c_transp);
+        }
+    }
+    window->DrawList->PopClipRect();
+
+    // Label, to the right of the frame (rendered up to "##", like the real widget).
+    if (label_size.x > 0.0f)
+    {
+        const char* label_end = FindRenderedTextEnd(label);
+        RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label, label_end);
+    }
+
+    // Popup with the real editor. The popup is outside the canvas, so its child window works
+    // (iff the node-editor popup patches are applied:
+    //  https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
+    //  https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-2404714757 ).
+    // We use BeginPopupEx (not BeginPopup, which forces AlwaysAutoResize) so the popup is
+    // resizable: it opens at the requested size, then keeps its own resized size across reopens.
+    // Resizing the popup does NOT change the read-only preview box.
+    // There is no infinite recursion: inside the popup we are no longer in the canvas.
+    bool changed = false;
+    {
+        SuspendCanvasIfNoHook suspend;
+        const ImGuiID popup_id = GetID("##ml_edit");
+        SetNextWindowSize(frame_size + style.WindowPadding * 2.0f, ImGuiCond_FirstUseEver);
+        if (BeginPopupEx(popup_id, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings))
+        {
+            if (InputTextMultiline("##edit", buf, buf_size, GetContentRegionAvail(), flags, callback, user_data))
+                changed = true;
+            EndPopup();
+        }
+    }
+
+    PopID();
+    return changed;
 }

@@ -531,6 +531,14 @@ IMGUI_NODE_EDITOR_API void Suspend();
 IMGUI_NODE_EDITOR_API void Resume();
 IMGUI_NODE_EDITOR_API bool IsSuspended();
 
+// --- InputTextMultiline inside a node ---------------------------------------
+// ImGui::InputTextMultiline() uses a child window, and child windows do not work inside the editor.
+// This version shows a read-only preview box with the requested size, and opens a resizable popup with the real
+// editor when the box is clicked. Outside of the editor, it calls ImGui::InputTextMultiline().
+// With a Dear ImGui that provides ImGuiContext::InputTextMultilineOverride, you do not need to call it:
+// ImGui::InputTextMultiline() does the same thing when called inside a node.
+IMGUI_NODE_EDITOR_API bool InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void* user_data = nullptr);
+
 // True while the editor is processing user input this frame (drag, select,
 // pan, zoom, link-create, etc.).
 IMGUI_NODE_EDITOR_API bool IsActive();

@@ -272,6 +272,14 @@ private:
 // Positions are then in canvas space (not in screen space), and child windows cannot be used.
 bool IsInsideCanvas();
 
+// InputTextMultiline() for the inside of a canvas.
+// ImGui::InputTextMultiline() uses a child window, and child windows do not work inside a canvas. This version shows a read-only
+// preview box with the requested size, and opens a resizable popup that hosts the real editor when the box is clicked.
+// Outside of a canvas, it calls ImGui::InputTextMultiline().
+// If Dear ImGui provides ImGuiContext::InputTextMultilineOverride (see IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE), the canvas
+// installs this function as the override while it is active: ImGui::InputTextMultiline() then works unchanged inside a canvas.
+bool CanvasInputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
+
 } // namespace ImGuiEx
 
 # endif // __IMGUI_EX_CANVAS_H__
