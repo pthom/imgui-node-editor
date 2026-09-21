@@ -35,6 +35,10 @@ struct Scene
     int    PlainPopupClicks = 0;
     int    LegacyPopupClicks = 0;
     int    LayoutComboIdx = 0;
+    ImVec4 PinColor = ImVec4(0.8f, 0.3f, 0.2f, 1.0f);
+    int    ChannelsPopupClicks = 0;
+    int    BackNodeClicks = 0;
+    int    FrontNodeClicks = 0;
     std::string LastMenuItem;
     ed::NodeId  ContextNodeId = 0;
     bool   MoveWidgetsNodeRequest = false;   // tests ask the scene to move the first node (it must be done inside ed::Begin / ed::End)
@@ -225,6 +229,72 @@ static void ShowLinkedNodes()
     ed::Link(ed::LinkId(100), ed::PinId(61), ed::PinId(51));
 }
 
+// A color editor inside a pin
+static void ShowPinsNode()
+{
+    ed::BeginNode(ed::NodeId(7));
+    ImGui::Dummy(ImVec2(ImGui::GetFontSize() * 8.0f, 0.0f));   // gives its width to the node (its text wraps at the width of the node)
+    ImGui::TextUnformatted("pins");
+    RecordLastItem("pins_title");
+    ed::BeginPin(ed::PinId(71), ed::PinKind::Input);
+    ImGui::ColorEdit4("pin color", &gScene.PinColor.x, ImGuiColorEditFlags_NoInputs);
+    RecordLastItem("pin_color");
+    ed::EndPin();
+    ed::EndNode();
+}
+
+// A node whose content splits the draw list into channels (to draw something behind its widgets),
+// and which opens a popup while a channel other than the first one is current
+static void ShowChannelsNode()
+{
+    ed::BeginNode(ed::NodeId(8));
+    ImGui::Dummy(ImVec2(ImGui::GetFontSize() * 10.0f, 0.0f));   // gives its width to the node
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    draw_list->ChannelsSplit(2);
+    draw_list->ChannelsSetCurrent(1);   // foreground: the widgets
+
+    ImGui::TextUnformatted("draw channels");
+    RecordLastItem("channels_title");
+    const ImVec2 background_min = ImGui::GetItemRectMin();
+    if (ImGui::Button("open popup##channels"))
+        ImGui::OpenPopup("channels_popup");
+    RecordLastItem("channels_open_popup");
+    const ImVec2 background_max = ImGui::GetItemRectMax();
+    if (ImGui::BeginPopup("channels_popup"))
+    {
+        ImGui::TextUnformatted("A popup opened while the draw channel 1 is current");
+        if (ImGui::Button("popup button"))
+            gScene.ChannelsPopupClicks++;
+        ImGui::EndPopup();
+    }
+
+    draw_list->ChannelsSetCurrent(0);   // background: a rectangle behind the widgets
+    draw_list->AddRectFilled(background_min, background_max, IM_COL32(60, 90, 140, 255));
+    draw_list->ChannelsMerge();
+    ed::EndNode();
+}
+
+// Two nodes that overlap: the second one is drawn over the first one, and their buttons overlap too.
+// Dear ImGui gives the hover to the first item submitted: without care, the button of the node BEHIND would get the clicks.
+static void ShowOverlappingNodes()
+{
+    const float em = ImGui::GetFontSize();
+
+    ed::BeginNode(ed::NodeId(9));
+    ImGui::TextUnformatted("behind");
+    if (ImGui::Button("button##behind", ImVec2(em * 8.0f, em * 2.0f)))
+        gScene.BackNodeClicks++;
+    ed::EndNode();
+
+    ed::BeginNode(ed::NodeId(10));
+    ImGui::TextUnformatted("in front");
+    RecordLastItem("front_title");
+    if (ImGui::Button("button##front", ImVec2(em * 8.0f, em * 2.0f)))
+        gScene.FrontNodeClicks++;
+    RecordLastItem("front_button");
+    ed::EndNode();
+}
+
 // Inspect the draw commands that the editor added to the draw list of the window (call right after ed::End())
 static void InspectDrawList(int first_cmd)
 {
@@ -346,6 +416,10 @@ void NodeEditorTests_ShowGui()
             ed::SetNodePosition(ed::NodeId(4), ImVec2(em * 20.0f, em * 14.0f));
             ed::SetNodePosition(ed::NodeId(5), ImVec2(em * 2.0f, em * 24.0f));
             ed::SetNodePosition(ed::NodeId(6), ImVec2(em * 12.0f, em * 28.0f));
+            ed::SetNodePosition(ed::NodeId(7), ImVec2(em * 40.0f, em * 2.0f));
+            ed::SetNodePosition(ed::NodeId(8), ImVec2(em * 40.0f, em * 10.0f));
+            ed::SetNodePosition(ed::NodeId(9), ImVec2(em * 40.0f, em * 20.0f));
+            ed::SetNodePosition(ed::NodeId(10), ImVec2(em * 41.0f, em * 20.5f));
         }
         if (gScene.MoveWidgetsNodeRequest)
         {
@@ -357,9 +431,12 @@ void NodeEditorTests_ShowGui()
         ShowWidthNode();
         ShowLayoutNode();
         ShowLinkedNodes();
+        ShowPinsNode();
+        ShowChannelsNode();
+        ShowOverlappingNodes();
         ShowContextMenus();
         gScene.NodeRects.clear();
-        for (int node_id = 1; node_id <= 6; node_id++)
+        for (int node_id = 1; node_id <= 10; node_id++)
         {
             const ImVec2 node_pos = ed::GetNodePosition(ed::NodeId(node_id));
             gScene.NodeRects.push_back(ImRect(ed::CanvasToScreen(node_pos), ed::CanvasToScreen(node_pos + ed::GetNodeSize(ed::NodeId(node_id)))));
@@ -819,6 +896,75 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
         style.AngledLinks = true;
         // The two paths are different: they do not produce the same geometry
         IM_CHECK_NE(vtx_count_angled, vtx_count_curve);
+    };
+
+    // ## Color editor inside a pin: the tooltip of the color button shows up next to the mouse, the picker opens below the button
+    t = IM_REGISTER_TEST(engine, "node_editor", "color_in_pin");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
+        {
+            const ImVec4 initial_color(0.8f, 0.3f, 0.2f, 1.0f);
+            gScene.PinColor = initial_color;
+            BringIntoView(ctx, "pin_color");
+            const ImRect color_rect = gScene.ItemRects["pin_color"];   // the color button, followed by the label
+            const ImVec2 button_center(color_rect.Min.x + color_rect.GetHeight() * 0.5f, color_rect.GetCenter().y);
+
+            ctx->MouseMoveToPos(button_center);
+            ctx->SleepNoSkip(1.0f, 1.0f / 30.0f);   // the tooltip of a color button appears after a delay
+            ImGuiWindow* tooltip = ctx->GetWindowByRef("//##Tooltip_00");
+            IM_CHECK(tooltip != nullptr);
+            IM_CHECK(tooltip->Active && !tooltip->Hidden);
+            ctx->LogInfo("zoom=%.2f tooltip pos=(%.0f,%.0f) mouse=(%.0f,%.0f)", gScene.Zoom, tooltip->Pos.x, tooltip->Pos.y, button_center.x, button_center.y);
+            IM_CHECK_LT(ImAbs(tooltip->Pos.x - button_center.x), ImGui::GetFontSize() * 3.0f);
+            IM_CHECK_LT(ImAbs(tooltip->Pos.y - button_center.y), ImGui::GetFontSize() * 3.0f);
+            CaptureApp(ctx, "color_in_pin_tooltip", view_name);
+
+            ctx->MouseClick(0);
+            ImGuiWindow* popup = TopPopupWindow();
+            CheckPopupPos(ctx, popup, color_rect.GetBL(), ImGui::GetFontSize() * 1.5f);
+            CaptureApp(ctx, "color_in_pin_picker", view_name);
+            if (popup == nullptr)
+                return;
+            ctx->SetRef(popup);
+            ctx->ItemClick("##picker/sv");
+            IM_CHECK(memcmp(&gScene.PinColor, &initial_color, sizeof(ImVec4)) != 0);
+        });
+    };
+
+    // ## Popup opened from a node whose content uses draw channels, while a channel other than the first one is current
+    t = IM_REGISTER_TEST(engine, "node_editor", "draw_channels");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
+        {
+            gScene.ChannelsPopupClicks = 0;
+            NodeItemClick(ctx, "channels_open_popup");
+            ImGuiWindow* popup = TopPopupWindow();
+            CheckPopupPos(ctx, popup, NodeItemCenter("channels_open_popup"), ImGui::GetFontSize());
+            CaptureApp(ctx, "draw_channels", view_name);
+            if (popup == nullptr)
+                return;
+            ctx->SetRef(popup);
+            ctx->ItemClick("popup button");
+            IM_CHECK_EQ(gScene.ChannelsPopupClicks, 1);
+        });
+    };
+
+    // ## Two overlapping nodes: a click goes to the button of the node in front, not to the button hidden behind it
+    t = IM_REGISTER_TEST(engine, "node_editor", "overlapping_nodes");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
+        {
+            gScene.BackNodeClicks = 0;
+            gScene.FrontNodeClicks = 0;
+            NodeItemClick(ctx, "front_button");
+            ctx->Yield(2);
+            CaptureApp(ctx, "overlapping_nodes", view_name);
+            IM_CHECK_EQ(gScene.FrontNodeClicks, 1);
+            IM_CHECK_EQ(gScene.BackNodeClicks, 0);
+        });
     };
 
     // ## Same checks when the window of the editor is docked (clip rects and popups went wrong in docked windows)
