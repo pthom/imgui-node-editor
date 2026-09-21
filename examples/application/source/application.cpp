@@ -50,7 +50,7 @@ bool Application::Create(int width /*= -1*/, int height /*= -1*/)
 
     ImGui::StyleColorsDark();
 
-    RecreateFontAtlas();
+    LoadFonts();
 
     m_Platform->AcknowledgeWindowScaleChanged();
     m_Platform->AcknowledgeFramebufferScaleChanged();
@@ -79,22 +79,16 @@ int Application::Run()
     return 0;
 }
 
-void Application::RecreateFontAtlas()
+void Application::LoadFonts()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    IM_DELETE(io.Fonts);
-
-    io.Fonts = IM_NEW(ImFontAtlas);
-
+    // Fonts are rasterized on demand, at the density of the framebuffer (Dear ImGui 1.92+)
     ImFontConfig config;
     config.PixelSnapH = true;
-    config.RasterizerDensity = m_Platform->GetFramebufferScale();
 
     m_DefaultFont = io.Fonts->AddFontFromFileTTF("data/Play-Regular.ttf", 18.0f, &config);
     m_HeaderFont  = io.Fonts->AddFontFromFileTTF("data/Cuprum-Bold.ttf",  20.0f, &config);
-
-    io.Fonts->Build();
 }
 
 void Application::Frame()
@@ -105,12 +99,7 @@ void Application::Frame()
         m_Platform->AcknowledgeWindowScaleChanged();
 
     if (m_Platform->HasFramebufferScaleChanged())
-    {
-        m_Renderer->InvalidateResources();
-        RecreateFontAtlas();
-        m_Renderer->UpdateResources();
         m_Platform->AcknowledgeFramebufferScaleChanged();
-    }
 
     const float windowScale      = m_Platform->GetWindowScale();
     const float framebufferScale = m_Platform->GetFramebufferScale();
@@ -154,7 +143,7 @@ void Application::Frame()
     drawData->DisplaySize.x *= framebufferScale;
     drawData->DisplaySize.y *= framebufferScale;
 
-    for (int i = 0; i < drawData->CmdListsCount; i++)
+    for (int i = 0; i < drawData->CmdLists.Size; i++)
     {
         auto& cmdList = drawData->CmdLists[i];
         for (auto& vtx : cmdList->VtxBuffer)
@@ -214,7 +203,7 @@ ImTextureID Application::LoadTexture(const char* path)
         return texture;
     }
     else
-        return nullptr;
+        return ImTextureID_Invalid;
 }
 
 ImTextureID Application::CreateTexture(const void* data, int width, int height)

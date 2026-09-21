@@ -34,8 +34,6 @@ struct RendererDX11 final
     void Clear(const ImVec4& color) override;
     void Present() override;
     void Resize(int width, int height) override;
-    void InvalidateResources() override;
-    void UpdateResources() override;
 
     ImTextureID CreateTexture(const void* data, int width, int height) override;
     void        DestroyTexture(ImTextureID texture) override;
@@ -123,16 +121,6 @@ void RendererDX11::Resize(int width, int height)
     CreateRenderTarget();
 }
 
-void RendererDX11::InvalidateResources()
-{
-    ImGui_ImplDX11_InvalidateDeviceObjects();
-}
-
-void RendererDX11::UpdateResources()
-{
-    ImGui_ImplDX11_CreateDeviceObjects();
-}
-
 HRESULT RendererDX11::CreateDeviceD3D(HWND hWnd)
 {
     // Setup swap chain
@@ -210,12 +198,12 @@ ImTextureID RendererDX11::CreateTexture(const void* data, int width, int height)
     if (!UploadTexture(texture))
     {
         IM_DELETE(texture);
-        return nullptr;
+        return ImTextureID_Invalid;
     }
 
     m_textures.push_back(texture);
 
-    return static_cast<ImTextureID>(texture->View);
+    return reinterpret_cast<ImTextureID>(texture->View);
 }
 
 void RendererDX11::DestroyTexture(ImTextureID texture)
@@ -252,7 +240,7 @@ auto RendererDX11::FindTexture(ImTextureID texture) -> Texture*
     if (!texture)
         return nullptr;
 
-    auto textureView = static_cast<decltype(Texture::View)>(texture);
+    auto textureView = reinterpret_cast<decltype(Texture::View)>(texture);
 
     for (auto& t : m_textures)
     {

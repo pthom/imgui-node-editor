@@ -4,7 +4,6 @@
 
 # include "platform.h"
 # include <algorithm>
-# include <cstdint> // std::intptr_t
 
 # if PLATFORM(WINDOWS)
 #     define NOMINMAX
@@ -55,8 +54,6 @@ struct RendererOpenGL3 final
     void Clear(const ImVec4& color) override;
     void Present() override;
     void Resize(int width, int height) override;
-    void InvalidateResources() override;
-    void UpdateResources() override;
 
     ImVector<ImTexture>::iterator FindTexture(ImTextureID texture);
     ImTextureID CreateTexture(const void* data, int width, int height) override;
@@ -149,16 +146,6 @@ void RendererOpenGL3::Resize(int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void RendererOpenGL3::InvalidateResources()
-{
-    ImGui_ImplOpenGL3_DestroyFontsTexture();
-}
-
-void RendererOpenGL3::UpdateResources()
-{
-    ImGui_ImplOpenGL3_CreateFontsTexture();
-}
-
 ImTextureID RendererOpenGL3::CreateTexture(const void* data, int width, int height)
 {
     m_Textures.resize(m_Textures.size() + 1);
@@ -177,12 +164,12 @@ ImTextureID RendererOpenGL3::CreateTexture(const void* data, int width, int heig
     texture.Width  = width;
     texture.Height = height;
 
-    return reinterpret_cast<ImTextureID>(static_cast<std::intptr_t>(texture.TextureID));
+    return static_cast<ImTextureID>(texture.TextureID);
 }
 
 ImVector<ImTexture>::iterator RendererOpenGL3::FindTexture(ImTextureID texture)
 {
-    auto textureID = static_cast<GLuint>(reinterpret_cast<std::intptr_t>(texture));
+    auto textureID = static_cast<GLuint>(texture);
 
     return std::find_if(m_Textures.begin(), m_Textures.end(), [textureID](ImTexture& texture)
     {

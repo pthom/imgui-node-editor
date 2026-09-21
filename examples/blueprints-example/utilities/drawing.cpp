@@ -69,7 +69,11 @@ void ax::Drawing::DrawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& 
             if (innerColor & 0xFF000000)
                 drawList->AddConvexPolyFilled(drawList->_Path.Data, drawList->_Path.Size, innerColor);
 
+#if IMGUI_VERSION_NUM < 19276
             drawList->PathStroke(color, true, 2.0f * outline_scale);
+#else
+            drawList->PathStroke(color, 2.0f * outline_scale, ImDrawFlags_Closed);
+#endif
         }
         else
             drawList->PathFillConvex(color);
@@ -125,7 +129,11 @@ void ax::Drawing::DrawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& 
                     drawList->AddRectFilled(p0, p1, innerColor, 0, ImDrawFlags_RoundCornersAll);
                 }
 
+#if IMGUI_VERSION_NUM < 19276
                 drawList->AddRect(p0, p1, color, 0, ImDrawFlags_RoundCornersAll, 2.0f * outline_scale);
+#else
+                drawList->AddRect(p0, p1, color, 0, 2.0f * outline_scale, ImDrawFlags_RoundCornersAll);
+#endif
             }
         }
 
@@ -182,7 +190,11 @@ void ax::Drawing::DrawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& 
                     drawList->AddRectFilled(p0, p1, innerColor, cr, ImDrawFlags_RoundCornersAll);
                 }
 
+#if IMGUI_VERSION_NUM < 19276
                 drawList->AddRect(p0, p1, color, cr, ImDrawFlags_RoundCornersAll, 2.0f * outline_scale);
+#else
+                drawList->AddRect(p0, p1, color, cr, 2.0f * outline_scale, ImDrawFlags_RoundCornersAll);
+#endif
             }
         }
         else if (type == IconType::Diamond)
@@ -211,7 +223,11 @@ void ax::Drawing::DrawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& 
                 if (innerColor & 0xFF000000)
                     drawList->AddConvexPolyFilled(drawList->_Path.Data, drawList->_Path.Size, innerColor);
 
+#if IMGUI_VERSION_NUM < 19276
                 drawList->PathStroke(color, true, 2.0f * outline_scale);
+#else
+                drawList->PathStroke(color, 2.0f * outline_scale, ImDrawFlags_Closed);
+#endif
             }
         }
         else
