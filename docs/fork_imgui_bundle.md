@@ -182,7 +182,7 @@ if (ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax())
 
 ## 5. Running the tests
 
-`tests/node_editor_tests.h` and `tests/node_editor_tests.cpp` contain 16 tests written with
+`tests/node_editor_tests.h` and `tests/node_editor_tests.cpp` contain 18 tests written with
 [imgui_test_engine](https://github.com/ocornut/imgui_test_engine). They build a small scene (nodes with a combo, a color editor, a
 multiline text, popups, a tooltip, context menus, a horizontal layout, links, a color editor inside a pin, a node that uses draw
 channels, two overlapping nodes) and drive it with a simulated mouse, at zoom 0.5 / 1 / 2
@@ -211,9 +211,15 @@ cd imgui_bundle/.github/ci_automation_tests
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DHELLOIMGUI_DOWNLOAD_FREETYPE_IF_NEEDED=ON && cmake --build build -j
 ./build/ci_node_editor_tests            # interactive: look at the scene, run the tests from the test engine window
 ./build/ci_node_editor_tests --auto     # run all the tests and exit; the exit code is 0 if they all passed
+./build/ci_node_editor_tests --auto --viewports   # same, with multi-viewports enabled
 ```
 
 In automatic mode the screenshots of each test are written to `node_editor_tests_captures/`.
+
+Two tests need multi-viewports (`ImGuiConfigFlags_ViewportsEnable`), and are skipped otherwise: the editor inside a window that is
+an OS window of its own, and a combo whose popup leaves the application window. For them, the application that runs the tests must
+clear `ImGuiBackendFlags_HasMouseHoveredViewport` at each frame: the platform backend reports which OS window is under the real
+mouse, while the test engine simulates the mouse.
 
 The CI of this repository (`.github/workflows/tests.yml`) does the same thing with a pinned commit of Dear ImGui Bundle, in which
 it replaces imgui-node-editor by the commit under test. A second job checks that the library compiles against a stock Dear ImGui
