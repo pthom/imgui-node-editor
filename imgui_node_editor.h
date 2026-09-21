@@ -650,7 +650,9 @@ IMGUI_NODE_EDITOR_API int  GetActionContextNodes(NodeId* nodes, int size);
 IMGUI_NODE_EDITOR_API int  GetActionContextLinks(LinkId* links, int size);
 IMGUI_NODE_EDITOR_API void EndShortcut();
 
-// Current canvas zoom factor; 1.0 = 100%.
+// Returns the INVERSE of the zoom: the size of a pixel in canvas units.
+// 1.0 at 100%, 2.0 when the content is drawn at half size (zoomed out), 0.5 when it is drawn twice as big (zoomed in).
+// To convert positions, use ScreenToCanvas() / CanvasToScreen().
 IMGUI_NODE_EDITOR_API float GetCurrentZoom();
 
 // --- Input queries (call between Begin and End) ---------------------------
