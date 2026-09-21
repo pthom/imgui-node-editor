@@ -52,6 +52,7 @@ struct Scene
     ImRect FirstBadClipRect;
     int    VisibleCmdCount = 0;       // in the last frame: draw commands of the editor that draw something inside the canvas
     int    VtxCount = 0;              // in the last frame: number of vertices in the draw list
+    int    UncoveredNodeCount = 0;    // visible nodes that no draw command can draw entirely (their clip rects are too small)
 
     // View of the canvas, updated each frame (tests zoom with the mouse wheel and pan with a right button drag)
     float  Zoom = 1.0f;
@@ -249,6 +250,26 @@ static void InspectDrawList(int first_cmd)
         else if (clip_rect.Overlaps(gScene.CanvasRect))
             gScene.VisibleCmdCount++;
     }
+
+    // The visible part of each node must be inside the clip rect of at least one draw command of the editor.
+    // (when a popup or a docked window shrinks the clip rects of what was submitted before it, a part of a node disappears)
+    for (const ImRect& node_rect : gScene.NodeRects)
+    {
+        ImRect visible_rect = node_rect;
+        visible_rect.ClipWith(gScene.CanvasRect);
+        visible_rect.Expand(-2.0f);
+        if (visible_rect.GetWidth() <= 0.0f || visible_rect.GetHeight() <= 0.0f)
+            continue;
+        bool is_covered = false;
+        for (int i = first_cmd; i < draw_list->CmdBuffer.Size && !is_covered; i++)
+        {
+            const ImDrawCmd& cmd = draw_list->CmdBuffer[i];
+            if (cmd.ElemCount > 0 && cmd.UserCallback == nullptr)
+                is_covered = ImRect(cmd.ClipRect.x, cmd.ClipRect.y, cmd.ClipRect.z, cmd.ClipRect.w).Contains(visible_rect);
+        }
+        if (!is_covered)
+            gScene.UncoveredNodeCount++;
+    }
 }
 
 static void ShowContextMenus()
@@ -351,6 +372,18 @@ void NodeEditorTests_ShowGui()
         gScene.FirstFrame = false;
     }
     ImGui::End();
+
+# ifdef IMGUI_HAS_DOCK
+    // A window to dock with (see the test "docked")
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    {
+        ImGui::SetNextWindowPos(ImVec2(em * 4.0f, em * 46.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(em * 30.0f, em * 8.0f), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Node editor tests (dock target)");
+        ImGui::TextUnformatted("The test \"docked\" docks this window with the editor.");
+        ImGui::End();
+    }
+# endif
 }
 
 void NodeEditorTests_Shutdown()
@@ -485,6 +518,7 @@ static void CheckPopupPos(ImGuiTestContext* ctx, ImGuiWindow* popup, ImVec2 expe
 // Checks on what the editor added to the draw list, over all the frames since the counters were reset:
 // - no canvas marker was left behind (the renderer would call it as a function)
 // - the clip rect of each draw command is inside the window (a clip rect converted twice to screen space lands outside)
+// - the visible part of each node is inside the clip rect of at least one draw command (nothing was clipped away)
 // - the editor draws something inside the canvas
 static void CheckDrawList(ImGuiTestContext* ctx)
 {
@@ -493,6 +527,7 @@ static void CheckDrawList(ImGuiTestContext* ctx)
     if (gScene.BadClipRectCount > 0)
         ctx->LogError("first bad clip rect: (%.0f,%.0f,%.0f,%.0f)", gScene.FirstBadClipRect.Min.x, gScene.FirstBadClipRect.Min.y, gScene.FirstBadClipRect.Max.x, gScene.FirstBadClipRect.Max.y);
     IM_CHECK_EQ(gScene.BadClipRectCount, 0);
+    IM_CHECK_EQ(gScene.UncoveredNodeCount, 0);
     IM_CHECK_GT(gScene.VisibleCmdCount, 0);
 }
 
@@ -507,6 +542,7 @@ static void RunInAllViews(ImGuiTestContext* ctx, ViewCheck check)
     ctx->Yield(2);
     gScene.SentinelCmdCount = 0;
     gScene.BadClipRectCount = 0;
+    gScene.UncoveredNodeCount = 0;
 
     const float zooms_up[]   = { 0.5f, 1.0f, 2.0f };
     const float zooms_down[] = { 2.0f, 1.0f, 0.5f };
@@ -784,6 +820,49 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
         // The two paths are different: they do not produce the same geometry
         IM_CHECK_NE(vtx_count_angled, vtx_count_curve);
     };
+
+    // ## Same checks when the window of the editor is docked (clip rects and popups went wrong in docked windows)
+# ifdef IMGUI_HAS_DOCK
+    t = IM_REGISTER_TEST(engine, "node_editor", "docked");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) == 0)
+        {
+            ctx->LogWarning("Docking is not enabled: test skipped");
+            return;
+        }
+        ctx->DockClear("Node editor tests", "Node editor tests (dock target)", NULL);
+        ctx->DockInto("//Node editor tests (dock target)", "//Node editor tests");
+        ctx->WindowFocus("//Node editor tests");
+        ctx->Yield(2);
+        ImGuiWindow* window = ctx->GetWindowByRef("//Node editor tests");
+        IM_CHECK(window != nullptr);
+        IM_CHECK(window->DockIsActive);
+
+        RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
+        {
+            gScene.ComboIdx = 0;
+            NodeItemClick(ctx, "combo");
+            CheckPopupPos(ctx, TopPopupWindow(), gScene.ItemRects["combo"].GetBL(), ImGui::GetFontSize());
+            CaptureApp(ctx, "docked_combo", view_name);
+            ctx->ItemClick("//##Combo_00/CCCC");
+            IM_CHECK_EQ(gScene.ComboIdx, 2);
+
+            gScene.PlainPopupClicks = 0;
+            NodeItemClick(ctx, "open_popup");
+            ImGuiWindow* popup = TopPopupWindow();
+            CheckPopupPos(ctx, popup, NodeItemCenter("open_popup"), ImGui::GetFontSize());
+            CaptureApp(ctx, "docked_popup", view_name);
+            if (popup == nullptr)
+                return;
+            ctx->SetRef(popup);
+            ctx->ItemClick("popup button");
+            IM_CHECK_EQ(gScene.PlainPopupClicks, 1);
+        });
+
+        ctx->DockClear("Node editor tests", "Node editor tests (dock target)", NULL);
+    };
+# endif
 
     // ## Context menus on a node and on the background (documented pattern, with Suspend / Resume)
     t = IM_REGISTER_TEST(engine, "node_editor", "context_menus");
