@@ -182,9 +182,10 @@ if (ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax())
 
 ## 5. Running the tests
 
-`tests/node_editor_tests.h` and `tests/node_editor_tests.cpp` contain 13 tests written with
+`tests/node_editor_tests.h` and `tests/node_editor_tests.cpp` contain 16 tests written with
 [imgui_test_engine](https://github.com/ocornut/imgui_test_engine). They build a small scene (nodes with a combo, a color editor, a
-multiline text, popups, a tooltip, context menus, a horizontal layout, links) and drive it with a simulated mouse, at zoom 0.5 / 1 / 2
+multiline text, popups, a tooltip, context menus, a horizontal layout, links, a color editor inside a pin, a node that uses draw
+channels, two overlapping nodes) and drive it with a simulated mouse, at zoom 0.5 / 1 / 2
 and after a pan. They check that popups open where they should and that they can be used, and they inspect the draw list at each
 frame (no canvas marker left behind, clip rects inside the window, no visible node clipped away). One test runs with the window of
 the editor docked.
