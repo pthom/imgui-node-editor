@@ -5276,8 +5276,14 @@ void ed::NodeBuilder::Begin(NodeId nodeId)
     // front node. Set HoveredId to a sentinel so subsequent ItemHoverable()
     // calls bail out; End() restores the previous value. ActiveId is left
     // untouched so any in-progress interaction keeps working.
+    // Only when the mouse is over this node, and directly over the window of the editor: if a popup (or any other window)
+    // is under the mouse, Dear ImGui already prevents the widgets of the node from being hovered, and the widgets of a popup
+    // opened from this node must stay usable, even where the popup lies over another node.
     m_HoverSuppressionActive = false;
-    if (Editor->IsNodeObscuredAt(m_CurrentNode, ImGui::GetMousePos()))
+    const ImVec2 mousePos = ImGui::GetMousePos();
+    if (ImGui::GetCurrentContext()->HoveredWindow == ImGui::GetCurrentWindow()
+        && m_CurrentNode->m_Bounds.Contains(mousePos)
+        && Editor->IsNodeObscuredAt(m_CurrentNode, mousePos))
     {
         ImGuiContext& g = *ImGui::GetCurrentContext();
         m_SavedHoveredId = g.HoveredId;
