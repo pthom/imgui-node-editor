@@ -1,0 +1,105 @@
+name: tests
+
+# 1. Runs the automated tests of this repository (tests/node_editor_tests.cpp, based on imgui_test_engine).
+#    They need an application that runs the test engine: Dear ImGui Bundle provides one (ci_node_editor_tests),
+#    together with a Dear ImGui that has the two optional patches of misc/imgui_patches.
+#    Dear ImGui Bundle is checked out at a pinned commit, and its copy of imgui-node-editor is replaced by this checkout.
+# 2. Checks that this library compiles against a stock Dear ImGui (docking and master branches),
+#    that the patches of misc/imgui_patches apply to it, and that the library compiles with the patched Dear ImGui.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # Commit of https://github.com/pthom/imgui_bundle used to run the tests. Bump it deliberately.
+  IMGUI_BUNDLE_REF: bdebfe66e96562359a03ffd48f77d5e73a7ca82e
+  # Tags of https://github.com/ocornut/imgui used by the "stock Dear ImGui" checks
+  IMGUI_DOCKING_TAG: v1.92.9b-docking
+  IMGUI_MASTER_TAG: v1.92.9b
+
+jobs:
+  tests:
+    name: Tests (imgui_test_engine, via Dear ImGui Bundle)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Dear ImGui Bundle
+        uses: actions/checkout@v4
+        with:
+          repository: pthom/imgui_bundle
+          ref: ${{ env.IMGUI_BUNDLE_REF }}
+          submodules: recursive
+          path: imgui_bundle
+
+      - name: Remove the copy of imgui-node-editor that comes with Dear ImGui Bundle
+        run: rm -rf imgui_bundle/external/imgui-node-editor/imgui-node-editor
+
+      - name: Checkout this repository in its place
+        uses: actions/checkout@v4
+        with:
+          path: imgui_bundle/external/imgui-node-editor/imgui-node-editor
+
+      - name: Install dependencies and start Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorg-dev libgl1-mesa-dev libglfw3-dev xvfb
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99.0" >> $GITHUB_ENV
+
+      - name: Build the test runner
+        run: |
+          cd imgui_bundle/.github/ci_automation_tests
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DHELLOIMGUI_DOWNLOAD_FREETYPE_IF_NEEDED=ON
+          cmake --build build --target ci_node_editor_tests -j 4
+
+      - name: Run the tests
+        run: |
+          cd imgui_bundle/.github/ci_automation_tests/build
+          ./ci_node_editor_tests --auto
+
+      - name: Upload the screenshots
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: node_editor_tests_captures
+          path: imgui_bundle/.github/ci_automation_tests/build/node_editor_tests_captures
+          if-no-files-found: ignore
+
+  stock_imgui:
+    name: Stock Dear ImGui (compiles, patches apply)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Dear ImGui (docking and master)
+        run: |
+          git clone --quiet --depth 1 --branch $IMGUI_DOCKING_TAG https://github.com/ocornut/imgui.git imgui_docking
+          git clone --quiet --depth 1 --branch $IMGUI_MASTER_TAG  https://github.com/ocornut/imgui.git imgui_master
+
+      - name: Compile against a stock Dear ImGui
+        run: |
+          for imgui in imgui_docking imgui_master; do
+            for f in imgui_canvas.cpp imgui_node_editor.cpp imgui_node_editor_api.cpp crude_json.cpp; do
+              echo "== $imgui: $f"
+              g++ -std=c++17 -fsyntax-only -I $imgui -I . $f
+            done
+          done
+
+      - name: Apply the patches of misc/imgui_patches
+        run: |
+          git -C imgui_docking apply --verbose ../misc/imgui_patches/0001-context-hooks-begin-end-window.patch
+          git -C imgui_docking apply --verbose ../misc/imgui_patches/0002-input-text-multiline-override.patch
+          git -C imgui_master  apply --verbose ../misc/imgui_patches/0001-context-hooks-begin-end-window.for-imgui-master.diff
+          git -C imgui_master  apply --verbose ../misc/imgui_patches/0002-input-text-multiline-override.patch
+
+      - name: Compile against the patched Dear ImGui
+        run: |
+          for imgui in imgui_docking imgui_master; do
+            grep -q "define IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW" $imgui/imgui_internal.h
+            grep -q "define IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE" $imgui/imgui_internal.h
+            for f in imgui_canvas.cpp imgui_node_editor.cpp imgui_node_editor_api.cpp; do
+              echo "== $imgui (patched): $f"
+              g++ -std=c++17 -fsyntax-only -I $imgui -I . $f
+            done
+          done
