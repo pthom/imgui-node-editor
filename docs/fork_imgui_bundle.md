@@ -213,3 +213,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DHELLOIMGUI_DOWNLOAD_FREETYPE_IF_NEED
 ```
 
 In automatic mode the screenshots of each test are written to `node_editor_tests_captures/`.
+
+The CI of this repository (`.github/workflows/tests.yml`) does the same thing with a pinned commit of Dear ImGui Bundle, in which
+it replaces imgui-node-editor by the commit under test. A second job checks that the library compiles against a stock Dear ImGui
+(docking and master), that the patches of chapter 3 apply to it, and that the library compiles with the patched Dear ImGui.

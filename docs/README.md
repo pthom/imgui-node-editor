@@ -1,6 +1,6 @@
 # Node Editor in ImGui
 
-[![build](https://github.com/thedmd/imgui-node-editor/actions/workflows/build.yml/badge.svg)](https://github.com/thedmd/imgui-node-editor/actions/workflows/build.yml)
+[![tests](https://github.com/pthom/imgui-node-editor/actions/workflows/tests.yml/badge.svg?branch=imgui_bundle)](https://github.com/pthom/imgui-node-editor/actions/workflows/tests.yml)
 
 > **This is the fork used by [Dear ImGui Bundle](https://github.com/pthom/imgui_bundle).** It can be used without it.
 > See [what this fork adds](fork_imgui_bundle.md): popups, combos and multiline text inside nodes, node width, fixes, automated tests.
