@@ -3,7 +3,7 @@ name: tests
 # 1. Runs the automated tests of this repository (tests/node_editor_tests.cpp, based on imgui_test_engine).
 #    They need an application that runs the test engine: Dear ImGui Bundle provides one (ci_node_editor_tests),
 #    together with a Dear ImGui that has the two optional patches of misc/imgui_patches.
-#    Dear ImGui Bundle is checked out at a pinned commit, and its copy of imgui-node-editor is replaced by this checkout.
+#    Dear ImGui Bundle is checked out (its main branch), and its copy of imgui-node-editor is replaced by this checkout.
 # 2. Checks that this library compiles against a stock Dear ImGui (docking and master branches),
 #    that the patches of misc/imgui_patches apply to it, and that the library compiles with the patched Dear ImGui.
 
@@ -11,10 +11,14 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"   # every Monday: shows a drift with Dear ImGui Bundle even when nobody pushes here
 
 env:
-  # Commit of https://github.com/pthom/imgui_bundle used to run the tests. Bump it deliberately.
-  IMGUI_BUNDLE_REF: bdebfe66e96562359a03ffd48f77d5e73a7ca82e
+  # Branch of https://github.com/pthom/imgui_bundle used to run the tests. It is not pinned on purpose: a change here that does not
+  # fit the current Dear ImGui Bundle must show up. When this job fails, look at which step failed: the build of Dear ImGui Bundle
+  # (then the cause may be on its side), or the tests.
+  IMGUI_BUNDLE_REF: main
   # Tags of https://github.com/ocornut/imgui used by the "stock Dear ImGui" checks
   IMGUI_DOCKING_TAG: v1.92.9b-docking
   IMGUI_MASTER_TAG: v1.92.9b
@@ -57,6 +61,14 @@ jobs:
         run: |
           cd imgui_bundle/.github/ci_automation_tests/build
           ./ci_node_editor_tests --auto
+
+      # Same tests with multi-viewports (windows and popups that leave the application window become OS windows).
+      # Xvfb runs without a window manager: allowed to fail until it has proved reliable there.
+      - name: Run the tests with multi-viewports
+        continue-on-error: true
+        run: |
+          cd imgui_bundle/.github/ci_automation_tests/build
+          ./ci_node_editor_tests --auto --viewports
 
       - name: Upload the screenshots
         if: ${{ always() }}
