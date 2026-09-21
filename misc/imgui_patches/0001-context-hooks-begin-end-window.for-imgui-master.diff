@@ -1,0 +1,47 @@
+diff --git a/imgui.cpp b/imgui.cpp
+index 7fa2d49e8..a7a62d38b 100644
+--- a/imgui.cpp
++++ b/imgui.cpp
+@@ -7527,6 +7527,12 @@ static void SetWindowActiveForSkipRefresh(ImGuiWindow* window)
+ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
+ {
+     ImGuiContext& g = *GImGui;
++
++    {
++        // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow, cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
++        CallContextHooks(&g, ImGuiContextHookType_BeginWindow);
++    }
++
+     const ImGuiStyle& style = g.Style;
+     IM_ASSERT(name != NULL && name[0] != '\0');     // Window name required
+     IM_ASSERT(g.WithinFrameScope);                  // Forgot to call ImGui::NewFrame()
+@@ -8384,6 +8390,11 @@ void ImGui::End()
+ 
+     g.CurrentWindowStack.pop_back();
+     SetCurrentWindow(g.CurrentWindowStack.Size == 0 ? NULL : g.CurrentWindowStack.back().Window);
++
++    {
++        // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow, cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
++        CallContextHooks(&g, ImGuiContextHookType_EndWindow);
++    }
+ }
+ 
+ void ImGui::PushItemFlag(ImGuiItemFlags option, bool enabled)
+diff --git a/imgui_internal.h b/imgui_internal.h
+index d2a8595a1..780973195 100644
+--- a/imgui_internal.h
++++ b/imgui_internal.h
+@@ -2228,7 +2228,12 @@ struct ImGuiIDStackTool
+ //-----------------------------------------------------------------------------
+ 
+ typedef void (*ImGuiContextHookCallback)(ImGuiContext* ctx, ImGuiContextHook* hook);
+-enum ImGuiContextHookType { ImGuiContextHookType_NewFramePre, ImGuiContextHookType_NewFramePost, ImGuiContextHookType_EndFramePre, ImGuiContextHookType_EndFramePost, ImGuiContextHookType_RenderPre, ImGuiContextHookType_RenderPost, ImGuiContextHookType_Shutdown, ImGuiContextHookType_PendingRemoval_ };
++
++#define IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW
++// [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow (called at the start of Begin() and at the end of End())
++// They let a library that changes the coordinate space (e.g. the zoomable canvas of imgui-node-editor) know when a window is begun from inside it.
++// cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
++enum ImGuiContextHookType { ImGuiContextHookType_NewFramePre, ImGuiContextHookType_NewFramePost, ImGuiContextHookType_EndFramePre, ImGuiContextHookType_EndFramePost, ImGuiContextHookType_RenderPre, ImGuiContextHookType_RenderPost, ImGuiContextHookType_Shutdown, ImGuiContextHookType_PendingRemoval_, ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow };
+ 
+ struct ImGuiContextHook
+ {
