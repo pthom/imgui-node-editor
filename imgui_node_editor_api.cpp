@@ -450,6 +450,11 @@ bool ax::NodeEditor::IsSuspended()
     return CurrentEditor()->IsSuspended();
 }
 
+bool ax::NodeEditor::InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
+{
+    return ImGuiEx::CanvasInputTextMultiline(label, buf, buf_size, size, flags, callback, user_data);
+}
+
 bool ax::NodeEditor::IsActive()
 {
     return CurrentEditor()->IsFocused();
