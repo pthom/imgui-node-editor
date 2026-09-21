@@ -947,6 +947,9 @@ void ed::Link::UpdateEndpoints()
 
 ed::LinkPathType ed::Link::GetPathType(ImRect& fromRect, ImRect& toRect) const
 {
+    if (!Editor->GetStyle().AngledLinks)
+        return LinkPathType_Default;
+
     const bool isDefault = m_StartPin && m_StartPin->m_Dir != ImVec2(1.0f, 0.0f)
             || m_EndPin && m_EndPin->m_Dir != ImVec2(-1.0f, 0.0f)
             || !m_EndPin || !m_EndPin->m_Node

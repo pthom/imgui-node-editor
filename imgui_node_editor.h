@@ -234,6 +234,7 @@ struct Style
     float   GroupBorderWidth;
     float   HighlightConnectedLinks;
     float   SnapLinkToPinDir; // when true link will start on the line defined by pin direction
+    bool    AngledLinks;      // when true (default), a link that would pass through its source or target node is routed around them, with angles
     ImVec2  GridSize;         // size of a background grid cell, in canvas units (x and y independent)
     ImVec4  Colors[StyleColor_Count];
 
@@ -266,6 +267,7 @@ struct Style
         GroupBorderWidth         = 1.0f;
         HighlightConnectedLinks  = 0.0f;
         SnapLinkToPinDir         = 0.0f;
+        AngledLinks              = true;
         GridSize                 = ImVec2(32.0f, 32.0f);
 
         Colors[StyleColor_Bg]                 = ImColor( 60,  60,  70, 200);
