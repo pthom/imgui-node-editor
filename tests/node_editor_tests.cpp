@@ -402,8 +402,10 @@ void NodeEditorTests_ShowGui()
     }
 
     const float em = ImGui::GetFontSize();
-    // Placed on the right, so that it does not cover the test engine window (which opens on the left)
-    ImGui::SetNextWindowPos(ImVec2(em * 54.0f, em * 2.0f), ImGuiCond_FirstUseEver);
+    // Placed on the right, so that it does not cover the test engine window (which opens on the left).
+    // Positions are relative to the main viewport: with multi-viewports, they are desktop coordinates.
+    const ImVec2 main_viewport_pos = ImGui::GetMainViewport()->Pos;
+    ImGui::SetNextWindowPos(main_viewport_pos + ImVec2(em * 54.0f, em * 2.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(em * 38.0f, em * 55.0f), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Node editor tests"))
     {
@@ -460,7 +462,7 @@ void NodeEditorTests_ShowGui()
     // A window to dock with (see the test "docked")
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
-        ImGui::SetNextWindowPos(ImVec2(em * 4.0f, em * 46.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(main_viewport_pos + ImVec2(em * 4.0f, em * 46.0f), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(em * 30.0f, em * 8.0f), ImGuiCond_FirstUseEver);
         ImGui::Begin("Node editor tests (dock target)");
         ImGui::TextUnformatted("The test \"docked\" docks this window with the editor.");
