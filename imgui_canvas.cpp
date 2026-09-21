@@ -3,6 +3,7 @@
 # endif
 # include "imgui_canvas.h"
 # include <type_traits>
+# include <cstdio>
 
 // https://stackoverflow.com/a/36079786
 # define DECLARE_HAS_MEMBER(__trait_name__, __member_name__)                         \
@@ -168,6 +169,21 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
             //ImGui::SetNextWindowViewport( ImGui::GetCurrentWindow()->Viewport->ID );
 
             auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+
+            // A child window is about to begin inside the canvas: this cannot work (BeginChildEx() sets the child flags right before calling Begin())
+            if ( canvas->m_BeginWindowDepth == 0 && canvas->m_SuspendCounter == 0 && ( context->NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasChildFlags ) != 0 )
+            {
+                fprintf(stderr, "%s", R"(
+Sorry, child windows are incompatible with the canvas of imgui-node-editor, and cannot be used while it is active.
+    Incompatible widgets are:
+        ImGui::BeginChild() and ImGui::EndChild()
+        ImGui::BeginListBox() and ImGui::EndListBox()
+        ImGui::InputTextMultiline(), unless Dear ImGui provides ImGuiContext::InputTextMultilineOverride (use ed::InputTextMultiline() instead)
+    Please examine the call stack to find the culprit.
+)");
+                context->NextWindowData.ClearFlags(); // IM_ASSERT may throw (Python bindings): do not leave the child settings to the next window
+                IM_ASSERT(false && "ImGui::BeginChild() should not be called inside the canvas of imgui-node-editor");
+            }
 
             canvas->m_BeginWindowDepth += 1;
             if (canvas->m_BeginWindowDepth > 1)
