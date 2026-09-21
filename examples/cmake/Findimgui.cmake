@@ -6,8 +6,13 @@ if (NOT TARGET imgui)
         #GIT_REPOSITORY     https://github.com/ocornut/imgui.git
         #GIT_TAG            12a3c77c2f4671813c2a09197234d5672f8ab5f3
 
-        GIT_REPOSITORY      https://github.com/thedmd/imgui.git
-        GIT_TAG             layouts
+        #GIT_REPOSITORY     https://github.com/thedmd/imgui.git
+        #GIT_TAG            layouts
+
+        # Dear ImGui + stack layout + the two patches of misc/imgui_patches (see docs/fork_imgui_bundle.md),
+        # at a fixed tag: the branches "layouts" and "imgui_bundle" are rebased from time to time.
+        GIT_REPOSITORY      https://github.com/pthom/imgui.git
+        GIT_TAG             bundle_20260921b
     )
 
     FetchContent_MakeAvailable(imgui)
