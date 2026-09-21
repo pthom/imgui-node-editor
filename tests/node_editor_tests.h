@@ -8,6 +8,9 @@
 //     - call NodeEditorTests_Shutdown() before destroying the ImGui context
 // The tests can then be launched from the test engine window, or queued with
 //     ImGuiTestEngine_QueueTests(engine, ImGuiTestGroup_Tests, "node_editor");
+// Two tests need multi-viewports (ImGuiConfigFlags_ViewportsEnable) and are skipped without them. With multi-viewports, clear
+// ImGuiBackendFlags_HasMouseHoveredViewport at each frame: the backend reports the OS window under the REAL mouse, while the
+// test engine simulates the mouse.
 # pragma once
 
 struct ImGuiTestEngine;
