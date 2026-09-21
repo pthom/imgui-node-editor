@@ -56,6 +56,7 @@ struct Scene
     ImRect FirstBadClipRect;
     int    VisibleCmdCount = 0;       // in the last frame: draw commands of the editor that draw something inside the canvas
     int    VtxCount = 0;              // in the last frame: number of vertices in the draw list
+    int    EmptyCmdCount = 0;         // in the last frame: draw commands of the editor that have no element
     int    UncoveredNodeCount = 0;    // visible nodes that no draw command can draw entirely (their clip rects are too small)
 
     // View of the canvas, updated each frame (tests zoom with the mouse wheel and pan with a right button drag)
@@ -303,11 +304,14 @@ static void InspectDrawList(int first_cmd)
     window_rect.Expand(1.0f);
     gScene.VisibleCmdCount = 0;
     gScene.VtxCount = draw_list->VtxBuffer.Size;
+    int empty_cmd_count = 0;
     for (int i = 0; i < draw_list->CmdBuffer.Size; i++)
     {
         const ImDrawCmd& cmd = draw_list->CmdBuffer[i];
         if (cmd.UserCallback == ImDrawCallback_ImCanvas)
             gScene.SentinelCmdCount++;
+        if (i >= first_cmd && cmd.ElemCount == 0 && cmd.UserCallback == nullptr)
+            empty_cmd_count++;
         if (i < first_cmd || cmd.ElemCount == 0 || cmd.UserCallback != nullptr)
             continue;
         const ImRect clip_rect(cmd.ClipRect.x, cmd.ClipRect.y, cmd.ClipRect.z, cmd.ClipRect.w);
@@ -320,6 +324,8 @@ static void InspectDrawList(int first_cmd)
         else if (clip_rect.Overlaps(gScene.CanvasRect))
             gScene.VisibleCmdCount++;
     }
+
+    gScene.EmptyCmdCount = empty_cmd_count;
 
     // The visible part of each node must be inside the clip rect of at least one draw command of the editor.
     // (when a popup or a docked window shrinks the clip rects of what was submitted before it, a part of a node disappears)
@@ -596,6 +602,7 @@ static void CheckPopupPos(ImGuiTestContext* ctx, ImGuiWindow* popup, ImVec2 expe
 // - no canvas marker was left behind (the renderer would call it as a function)
 // - the clip rect of each draw command is inside the window (a clip rect converted twice to screen space lands outside)
 // - the visible part of each node is inside the clip rect of at least one draw command (nothing was clipped away)
+// - the editor leaves no empty draw command behind
 // - the editor draws something inside the canvas
 static void CheckDrawList(ImGuiTestContext* ctx)
 {
@@ -605,6 +612,7 @@ static void CheckDrawList(ImGuiTestContext* ctx)
         ctx->LogError("first bad clip rect: (%.0f,%.0f,%.0f,%.0f)", gScene.FirstBadClipRect.Min.x, gScene.FirstBadClipRect.Min.y, gScene.FirstBadClipRect.Max.x, gScene.FirstBadClipRect.Max.y);
     IM_CHECK_EQ(gScene.BadClipRectCount, 0);
     IM_CHECK_EQ(gScene.UncoveredNodeCount, 0);
+    IM_CHECK_EQ(gScene.EmptyCmdCount, 0);
     IM_CHECK_GT(gScene.VisibleCmdCount, 0);
 }
 

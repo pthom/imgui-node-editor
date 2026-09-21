@@ -290,8 +290,17 @@ void ImGuiEx::Canvas::End()
             {
                 if (cmd.UserCallbackData == nullptr)
                     ++depth;   // BEGIN
-                else
+                else if (cmd.UserCallbackData == (void*)1)
                     --depth;   // END
+                continue;
+            }
+            if (depth > 0 && cmd.ElemCount == 0 && cmd.UserCallback == nullptr && i != m_DrawList->CmdBuffer.Size - 1)
+            {
+                // An empty command inside a region (for example the fresh command that EnterLocalSpace() adds after its BEGIN marker,
+                // when nothing was drawn into it): it draws nothing, remove it together with the markers.
+                // (never the last command of the list: Dear ImGui keeps writing to it)
+                cmd.UserCallback = ImDrawCallback_ImCanvas;
+                cmd.UserCallbackData = (void*)2;   // neither BEGIN nor END: see the test on UserCallbackData above
                 continue;
             }
             if (depth > 0)
