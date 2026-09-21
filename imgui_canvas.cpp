@@ -33,6 +33,14 @@
 #     define ImDrawCallback_ImCanvas        (ImDrawCallback)(-2)
 # endif
 
+// The canvas which is currently in local space (between EnterLocalSpace() and LeaveLocalSpace()), if any
+static ImGuiEx::Canvas* s_CanvasInLocalSpace = nullptr;
+
+bool ImGuiEx::IsInsideCanvas()
+{
+    return s_CanvasInLocalSpace != nullptr;
+}
+
 namespace ImCanvasDetails {
 
 DECLARE_HAS_MEMBER(HasFringeScale, _FringeScale);
@@ -701,6 +709,8 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     m_LastCurveTessellationTol = sharedData.CurveTessellationTol;
     sharedData.CurveTessellationTol *= m_View.InvScale() * m_View.InvScale(); // a squared distance
 # endif
+
+    s_CanvasInLocalSpace = this;
 }
 
 void ImGuiEx::Canvas::LeaveLocalSpace()
@@ -823,4 +833,6 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
 
     RestoreInputState();
     RestoreViewportState();
+
+    s_CanvasInLocalSpace = nullptr;
 }
