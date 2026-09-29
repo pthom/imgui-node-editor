@@ -771,6 +771,13 @@ ImVec2 ax::NodeEditor::CanvasToScreen(const ImVec2& pos)
     return CurrentEditor()->ToScreen(pos);
 }
 
+ImVec2 ax::NodeEditor::GetMousePosOnCanvas()
+{
+    // In local space, the canvas has already moved Dear ImGui's mouse position into canvas coordinates
+    const ImVec2 mousePos = ImGui::GetMousePos();
+    return ImGuiEx::IsInsideCanvas() ? mousePos : s_Editor->ToCanvas(mousePos);
+}
+
 int ax::NodeEditor::GetNodeCount()
 {
     return CurrentEditor()->CountLiveNodes();
