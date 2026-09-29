@@ -41,18 +41,24 @@ struct PinId;
 
 
 //------------------------------------------------------------------------------
+//    Enums
+//------------------------------------------------------------------------------
+
+// The kind of a pin, given to BeginPin(): an input or an output
 enum class PinKind
 {
     Input,
     Output
 };
 
+// The direction of the flow animation along a link, given to Flow()
 enum class FlowDirection
 {
     Forward,
     Backward
 };
 
+// How the view adapts when the editor's window is resized (Config::CanvasSizeMode)
 enum class CanvasSizeMode
 {
     FitVerticalView,        // Previous view will be scaled to fit new view on Y axis
@@ -62,6 +68,10 @@ enum class CanvasSizeMode
 
 
 //------------------------------------------------------------------------------
+//    Config
+//------------------------------------------------------------------------------
+
+// Why the editor saves its settings: given to the callbacks Config::SaveSettings and SaveNodeSettings
 enum class SaveReasonFlags: uint32_t
 {
     None       = 0x00000000,
@@ -85,26 +95,27 @@ using ConfigLoadNodeSettings = size_t (*)(NodeId nodeId, char* data, void* userP
 
 using ConfigSession          = void   (*)(void* userPointer);
 
+// The configuration of an editor, given to CreateEditor(): settings file, callbacks, mouse buttons, zoom
 struct Config
 {
     using CanvasSizeModeAlias = ax::NodeEditor::CanvasSizeMode;
 
-    const char*             SettingsFile;
+    const char*             SettingsFile;           // Where the editor saves its state (nullptr: nowhere)
     ConfigSession           BeginSaveSession;
     ConfigSession           EndSaveSession;
     ConfigSaveSettings      SaveSettings;
     ConfigLoadSettings      LoadSettings;
     ConfigSaveNodeSettings  SaveNodeSettings;
     ConfigLoadNodeSettings  LoadNodeSettings;
-    void*                   UserPointer;
+    void*                   UserPointer;            // Passed to the callbacks above
     ImVector<float>         CustomZoomLevels;
-    CanvasSizeModeAlias     CanvasSizeMode;
+    CanvasSizeModeAlias     CanvasSizeMode;         // How the view adapts when the editor's window is resized
     int                     DragButtonIndex;        // Mouse button index drag action will react to (0-left, 1-right, 2-middle)
     int                     SelectButtonIndex;      // Mouse button index select action will react to (0-left, 1-right, 2-middle)
     int                     NavigateButtonIndex;    // Mouse button index navigate action will react to (0-left, 1-right, 2-middle)
     int                     ContextMenuButtonIndex; // Mouse button index context menu action will react to (0-left, 1-right, 2-middle)
-    bool                    EnableSmoothZoom;
-    float                   SmoothZoomPower;
+    bool                    EnableSmoothZoom;       // Smooth zoom with the wheel (false: steps through the zoom levels)
+    float                   SmoothZoomPower;        // With smooth zoom, the zoom factor of one wheel step
 
     // Inside a node, Dear ImGui believes that the available width is the width of the window that hosts the editor:
     // Separator(), SeparatorText(), CollapsingHeader() and TextWrapped() go far beyond the node, and sliders / input fields
@@ -145,6 +156,10 @@ struct Config
 
 
 //------------------------------------------------------------------------------
+//    Style
+//------------------------------------------------------------------------------
+
+// The colors of an editor: the indices of Style::Colors (see PushStyleColor())
 enum StyleColor
 {
     StyleColor_Bg,
@@ -170,6 +185,7 @@ enum StyleColor
     StyleColor_Count
 };
 
+// The style variables that PushStyleVar() changes: the fields of Style
 enum StyleVar
 {
     StyleVar_NodePadding,
@@ -204,6 +220,7 @@ enum StyleVar
     StyleVar_Count
 };
 
+// The style of an editor (GetStyle()): sizes, roundings, the links, the flow animation, the colors
 struct Style
 {
     ImVec4  NodePadding;
@@ -297,10 +314,12 @@ struct Style
 
 
 //------------------------------------------------------------------------------
+//    Functions
+//------------------------------------------------------------------------------
+
 struct EditorContext;
 
 
-//------------------------------------------------------------------------------
 // --- Editor context lifecycle --------------------------------------------
 // You may keep multiple editors and switch between them with SetCurrentEditor.
 // Pass a Config to CreateEditor to set e.g. SettingsFile (where node positions
@@ -820,6 +839,7 @@ inline bool operator!=(const SafePointerType<Tag>& lhs, const SafePointerType<Ta
 
 } // namespace Details
 
+// You choose the values of the ids (e.g. an index, or a pointer). 0 means none: the id then converts to false.
 struct NodeId final: Details::SafePointerType<NodeId>
 {
     using SafePointerType::SafePointerType;
