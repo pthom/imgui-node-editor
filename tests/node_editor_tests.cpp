@@ -63,6 +63,12 @@ struct Scene
     float  Zoom = 1.0f;
     ImRect CanvasRect;   // screen rect of the canvas
     ImVec2 ZoomAnchor;   // screen position of an empty spot next to the top-left of the first node: zooming around it keeps the node visible
+
+    // The mouse, as the code of the scene sees it in the last frame (see HandleCreation())
+    bool   LinkDragged = false;        // QueryNewLink() or QueryNewNode() returned true: the user drags a link
+    ImVec2 MouseInCreate;              // ImGui::GetMousePos() in the create action, after the query
+    ImVec2 MouseOnCanvasInCreate;      // ed::GetMousePosOnCanvas() at the same place
+    ImVec2 MouseOutsideCreate;         // ImGui::GetMousePos() between ed::Begin() and ed::End(), outside of the create action
 };
 static Scene gScene;
 
@@ -224,6 +230,7 @@ static void ShowLinkedNodes()
     ImGui::TextUnformatted("link source");
     ed::BeginPin(ed::PinId(61), ed::PinKind::Output);
     ImGui::TextUnformatted("out ->");
+    RecordLastItem("link_out");
     ed::EndPin();
     ed::EndNode();
 
@@ -387,6 +394,25 @@ static void ShowContextMenus()
 # endif
 }
 
+// The scene creates no link: it records the mouse as seen from inside the create action, while a link is dragged
+static void HandleCreation()
+{
+    gScene.LinkDragged = false;
+    gScene.MouseOutsideCreate = ImGui::GetMousePos();
+    if (ed::BeginCreate())
+    {
+        // A link dragged over a pin is a new link, over empty space a new node
+        ed::PinId start_id, end_id, pin_id;
+        if (ed::QueryNewLink(&start_id, &end_id) || ed::QueryNewNode(&pin_id))
+        {
+            gScene.LinkDragged = true;
+            gScene.MouseInCreate = ImGui::GetMousePos();
+            gScene.MouseOnCanvasInCreate = ed::GetMousePosOnCanvas();
+        }
+        ed::EndCreate();
+    }
+}
+
 void NodeEditorTests_ShowGui()
 {
     if (gScene.Editor == nullptr)
@@ -443,6 +469,7 @@ void NodeEditorTests_ShowGui()
         ShowChannelsNode();
         ShowOverlappingNodes();
         ShowContextMenus();
+        HandleCreation();
         gScene.NodeRects.clear();
         for (int node_id = 1; node_id <= 10; node_id++)
         {
@@ -1150,6 +1177,35 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
             ctx->SetRef(popup);
             ctx->ItemClick("background item");
             IM_CHECK_STR_EQ(gScene.LastMenuItem.c_str(), "background item");
+        });
+    };
+
+    // ## GetMousePosOnCanvas(): the mouse in canvas coordinates, also in the create action (while a link is dragged),
+    //    where ImGui::GetMousePos() gives screen coordinates
+    t = IM_REGISTER_TEST(engine, "node_editor", "mouse_pos_on_canvas");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
+        {
+            BringIntoView(ctx, "link_out");
+            ImVec2 empty_spot;
+            IM_CHECK(FindEmptySpot(&empty_spot));
+            ctx->MouseMoveToPos(gScene.ItemRects["link_out"].GetCenter());
+            ctx->MouseDown(0);
+            ctx->MouseMoveToPos(empty_spot);
+            ctx->Yield(2);
+            IM_CHECK(gScene.LinkDragged);
+            ctx->LogInfo("%s: in the create action, mouse (%.0f, %.0f), on canvas (%.0f, %.0f); outside (%.0f, %.0f)", view_name,
+                         gScene.MouseInCreate.x, gScene.MouseInCreate.y, gScene.MouseOnCanvasInCreate.x,
+                         gScene.MouseOnCanvasInCreate.y, gScene.MouseOutsideCreate.x, gScene.MouseOutsideCreate.y);
+            // In the create action, ImGui::GetMousePos() is in screen coordinates...
+            IM_CHECK_LT(ImLengthSqr(gScene.MouseInCreate - empty_spot), 1.0f);
+            // ...which differ from the canvas coordinates of ImGui::GetMousePos() outside of it: GetMousePosOnCanvas() gives those
+            IM_CHECK_GT(ImLengthSqr(gScene.MouseInCreate - gScene.MouseOutsideCreate), 1.0f);
+            IM_CHECK_LT(ImLengthSqr(gScene.MouseOnCanvasInCreate - gScene.MouseOutsideCreate), 1.0f);
+            ctx->MouseUp(0);
+            ctx->Yield(2);
+            IM_CHECK(!gScene.LinkDragged);
         });
     };
 }

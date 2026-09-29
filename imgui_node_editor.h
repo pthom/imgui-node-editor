@@ -480,11 +480,15 @@ IMGUI_NODE_EDITOR_API void Flow(LinkId linkId, FlowDirection direction = FlowDir
 //           if (AcceptNewItem())         // -> typical UX: open a "Add node" popup
 //               /* spawn a new node and connect pin `a` to one of its pins */;
 //       }
+//       EndCreate();                    // only when BeginCreate() returned true
 //   }
-//   EndCreate();
 //
 // The QueryNewLink/QueryNewNode/AcceptNewItem overloads taking a color and
 // thickness customize the in-progress link's drawing while the user drags.
+//
+// Once QueryNewLink() or QueryNewNode() returned true, and until EndCreate(), the editor is suspended (it draws the
+// dragged link in screen space): ImGui::GetMousePos() and the cursor are then in SCREEN coords, while everywhere else
+// between Begin() and End() they are in CANVAS coords. To place a new node at the mouse, use GetMousePosOnCanvas().
 IMGUI_NODE_EDITOR_API bool BeginCreate(const ImVec4& color = ImVec4(0, 0, 0, 0), float thickness = 1.0f);
 IMGUI_NODE_EDITOR_API bool QueryNewLink(PinId* startId, PinId* endId);
 IMGUI_NODE_EDITOR_API bool QueryNewLink(PinId* startId, PinId* endId, const ImVec4& color, float thickness = 1.0f);
@@ -540,11 +544,11 @@ IMGUI_NODE_EDITOR_API float GetNodeZPosition(NodeId nodeId); // Returns node z p
 IMGUI_NODE_EDITOR_API void RestoreNodeState(NodeId nodeId);
 
 // --- Suspend / Resume -----------------------------------------------------
-// Temporarily disable the editor's input/canvas state machine. You MUST
-// suspend before calling ImGui popup APIs like ImGui::OpenPopup or
-// ImGui::BeginPopup that should appear ABOVE the canvas (otherwise the
-// popup's coordinates and event capture will be wrong). Resume() restores
-// editor input handling. See the ShowNodeContextMenu example below.
+// Temporarily disable the editor's input/canvas state machine: positions are then in SCREEN coords. With a stock
+// Dear ImGui, you MUST suspend before calling ImGui popup APIs like ImGui::OpenPopup or ImGui::BeginPopup that should
+// appear ABOVE the canvas (otherwise the popup's coordinates and event capture will be wrong). With a Dear ImGui that
+// has the patches of docs/fork_imgui_bundle.md (chapter 3), popups work without it. Resume() restores editor input
+// handling. See the ShowNodeContextMenu example below.
 IMGUI_NODE_EDITOR_API void Suspend();
 IMGUI_NODE_EDITOR_API void Resume();
 IMGUI_NODE_EDITOR_API bool IsSuspended();
@@ -684,6 +688,10 @@ IMGUI_NODE_EDITOR_API bool PinHadAnyLinks(PinId pinId);
 IMGUI_NODE_EDITOR_API ImVec2 GetScreenSize();
 IMGUI_NODE_EDITOR_API ImVec2 ScreenToCanvas(const ImVec2& pos);
 IMGUI_NODE_EDITOR_API ImVec2 CanvasToScreen(const ImVec2& pos);
+// The mouse position in CANVAS coords, anywhere between Begin() and End(). ImGui::GetMousePos() gives the same, except
+// where the editor is suspended (after Suspend(), and in the create action once QueryNewLink() or QueryNewNode()
+// returned true): it then gives SCREEN coords.
+IMGUI_NODE_EDITOR_API ImVec2 GetMousePosOnCanvas();
 
 IMGUI_NODE_EDITOR_API int GetNodeCount();                                // Returns number of submitted nodes since Begin() call
 IMGUI_NODE_EDITOR_API int GetOrderedNodeIds(NodeId* nodes, int size);    // Fills an array with node id's in order they're drawn; up to 'size` elements are set. Returns actual size of filled id's.
