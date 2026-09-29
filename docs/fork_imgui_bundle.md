@@ -32,7 +32,7 @@ In the order of the commits:
 | Canvas | `ImGuiEx::IsInsideCanvas()` |
 | Multiline text | `ed::InputTextMultiline()`: a multiline text field that works inside a node |
 | Child windows | A child window begun inside the editor is reported with an explanation, instead of silently misbehaving |
-| Node width | `Config::ForceWindowContentWidthToNodeWidth`: separators, headers, wrapped text and default item widths use the width of the node. A node that grows at each frame is detected and explained |
+| Node width | `Config::ForceWindowContentWidthToNodeWidth`: separators, headers, wrapped text and default item widths use the width of the node. A node that grows at each frame, or that collapses to the width of one character, is detected and explained |
 | Links | Angled links (upstream PR 119): a link that would pass through its nodes is routed around them. Optional: `Style::AngledLinks`. The default link color follows the light / dark theme |
 | Input | `EditorContext::DisableUserInputThisFrame()`: a widget inside a node (a plot...) can keep the mouse for itself |
 | Tests | Automated tests, based on imgui_test_engine (chapter 5) |
@@ -147,7 +147,8 @@ Two things to know:
 
 - With this option, all the text wraps at the width of the node, so text does not give a width to the node anymore. A node needs at
   least one item with a fixed width (a `Dummy`, a widget preceded by `SetNextItemWidth()`...). A node that contains only text
-  collapses to the width of one character.
+  collapses to the width of one character. The editor detects a node narrower than two characters and taller than 6 lines
+  during 3 frames, and asserts with a message that explains the fix.
 - A slider or an input field whose label is longer than 4 wide characters is wider than the node. The node then grows at each frame.
   Call `SetNextItemWidth()` before such widgets. The editor detects a node whose width increased by the same amount during 100
   frames, and asserts with a message that explains the cause. This detection runs only when the option is on.

@@ -5546,6 +5546,27 @@ struct
         return true;
     }
 
+    std::map<ax::NodeEditor::NodeId, int> m_CollapsedFramesCount;
+
+    bool IsNodeCollapsed(ax::NodeEditor::NodeId nodeId)
+    {
+        // Test if a node collapsed to the width of about one character.
+        // Text wraps at the width of the node: a node whose only content is wrapped text gets no width from it.
+        // On its first frame, the node has no size yet and its text wraps at 20 pixels; the node takes this width,
+        // and keeps it, since each frame wraps at the width of the previous one. It then shows one character per line.
+        // Implementation details: a node narrower than two wide characters and taller than 6 lines, during 3 frames
+        // (a node is measured one frame late). A node made only of 6 or more small items stacked vertically, without
+        // any label, would also match.
+        ImVec2 nodeSize = GetNodeSize(nodeId);
+        float contentWidth = nodeSize.x - ImGui::GetStyle().WindowPadding.x * 2.f;
+        bool isCollapsed = nodeSize.x > 0.f
+            && contentWidth < ImGui::CalcTextSize("MM").x
+            && nodeSize.y > 6.f * ImGui::GetTextLineHeightWithSpacing();
+        int& collapsedFramesCount = m_CollapsedFramesCount[nodeId];
+        collapsedFramesCount = isCollapsed ? collapsedFramesCount + 1 : 0;
+        return collapsedFramesCount >= 3;
+    }
+
 public:
     void OnBeginNode(ed::NodeId nodeId)
     {
@@ -5554,6 +5575,10 @@ public:
         if (IsNodeGrowingIndefinitely(nodeId))
         {
             IM_ASSERT(false && "The node is growing indefinitely. Please make sure to use fixed width widgets! You may want to use ImGui::SetNextItemWidth(width) (C++) or imgui.set_next_item_width(width) (Python) before using a slider for example");
+        }
+        if (IsNodeCollapsed(nodeId))
+        {
+            IM_ASSERT(false && "The node collapsed to the width of one character: with ForceWindowContentWidthToNodeWidth, text wraps at the width of the node, so text alone does not give a width to a node (a markdown text, TextWrapped...). Put an item with a fixed width in the node before the text, e.g. ImGui::Dummy(ImVec2(width, 0)) (C++) or imgui.dummy(ImVec2(width, 0)) (Python)");
         }
 
         ImGuiContentWidthData currentWindowContentWidth;
