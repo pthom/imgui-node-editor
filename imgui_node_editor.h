@@ -125,7 +125,7 @@ struct Config
     // Set ForceWindowContentWidthToNodeWidth to true so that they use the width of the node (false by default).
     // - All the text then wraps at the width of the node, so text does not give a width to the node: a node needs at least one
     //   item with a fixed width (Dummy, a widget preceded by SetNextItemWidth()...), otherwise it collapses (this is
-//   detected, and reported with an IM_ASSERT).
+    //   detected, and reported with an IM_ASSERT).
     // - The default item width leaves room for a label of 4 wide characters. With a longer label, call SetNextItemWidth(),
     //   otherwise the node grows at each frame (this is detected, and reported with an IM_ASSERT).
     bool                    ForceWindowContentWidthToNodeWidth;
