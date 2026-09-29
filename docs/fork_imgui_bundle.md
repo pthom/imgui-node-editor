@@ -30,6 +30,7 @@ In the order of the commits:
 | Canvas: clip rects | Clip rects are transformed once, after the draw channels are merged. Fixes a crash in the renderer after `Suspend()` / `Resume()` (upstream issue 282), and geometry that disappeared in docked windows, or when a popup was opened while the view was panned or zoomed |
 | Canvas: popups | With the Dear ImGui hooks of chapter 3, popups, combos, color pickers, tooltips and context menus opened from inside the editor are placed correctly, without `Suspend()` / `Resume()` |
 | Canvas | `ImGuiEx::IsInsideCanvas()` |
+| Mouse | `ed::GetMousePosOnCanvas()`: the mouse in canvas coordinates, also where the editor is suspended |
 | Multiline text | `ed::InputTextMultiline()`: a multiline text field that works inside a node |
 | Child windows | A child window begun inside the editor is reported with an explanation, instead of silently misbehaving |
 | Node width | `Config::ForceWindowContentWidthToNodeWidth`: separators, headers, wrapped text and default item widths use the width of the node. A node that grows at each frame, or that collapses to the width of one character, is detected and explained |
@@ -152,6 +153,17 @@ Two things to know:
 - A slider or an input field whose label is longer than 4 wide characters is wider than the node. The node then grows at each frame.
   Call `SetNextItemWidth()` before such widgets. The editor detects a node whose width increased by the same amount during 100
   frames, and asserts with a message that explains the cause. This detection runs only when the option is on.
+
+**`ed::GetMousePosOnCanvas()`** The mouse position in canvas coordinates (those of `SetNodePosition()`), anywhere between
+`ed::Begin()` and `ed::End()`. `ImGui::GetMousePos()` gives the same, except where the editor is suspended: after `Suspend()`,
+and in the create action once `QueryNewLink()` or `QueryNewNode()` returned true, where it gives screen coordinates. A node
+created from there, at the mouse, would land in the wrong place:
+
+```cpp
+ed::PinId pinId;
+if (ed::QueryNewNode(&pinId) && ed::AcceptNewItem())   // a link dropped in empty space
+    newNodePosition = ed::GetMousePosOnCanvas();       // not ImGui::GetMousePos(): screen coordinates here
+```
 
 **`ed::InputTextMultiline()`** Same parameters as `ImGui::InputTextMultiline()`. Inside a node, it shows a read-only preview box with
 the requested size; a click opens a resizable popup with the real editor. Outside of the editor, it calls
