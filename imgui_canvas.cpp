@@ -93,6 +93,19 @@ static inline float& ImFringeScaleRef(ImDrawList* drawList)
     return FringeScaleRef::Get<ImDrawList>(drawList);
 }
 
+// Sets the draw list's fringe scale (the anti-aliasing fringe, scaled with the zoom).
+//
+// From Dear ImGui 1.93, two more fields follow it (_InvFringeScale, which scales the thicknesses, and
+// _FringeScaleIsInteger, which selects a fast path for whole pixels): _SetPixelDensity() sets the three together.
+static inline void ImSetFringeScale(ImDrawList* drawList, float fringeScale)
+{
+# if IMGUI_VERSION_NUM >= 19298
+    drawList->_SetPixelDensity(1.0f / fringeScale);
+# else
+    ImFringeScaleRef(drawList) = fringeScale;
+# endif
+}
+
 static inline unsigned int& ImVtxOffsetRef(ImDrawList* drawList)
 {
     using namespace ImCanvasDetails;
@@ -622,9 +635,8 @@ void ImGuiEx::Canvas::EnterLocalSpace()
 
     m_ViewRect = CalcViewRect(m_View);;
 
-    auto& fringeScale = ImFringeScaleRef(m_DrawList);
-    m_LastFringeScale = fringeScale;
-    fringeScale *= m_View.InvScale;
+    m_LastFringeScale = ImFringeScaleRef(m_DrawList);
+    ImSetFringeScale(m_DrawList, m_LastFringeScale * m_View.InvScale);
 
     s_CanvasInLocalSpace = this;
 # if defined(IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE)
@@ -683,8 +695,7 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
     // UserCallbackData==(void*)1. End() pairs BEGIN/END post-merge to transform clip rects once.
     m_DrawList->AddCallback(ImDrawCallback_ImCanvas, (void*)1);
 
-    auto& fringeScale = ImFringeScaleRef(m_DrawList);
-    fringeScale = m_LastFringeScale;
+    ImSetFringeScale(m_DrawList, m_LastFringeScale);
 
     // And pop \o/
     ImGui::PopClipRect();

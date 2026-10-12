@@ -96,7 +96,11 @@ static const float c_SelectionFadeOutDuration   = 0.15f; // seconds
 static const auto  c_MaxMoveOverEdgeSpeed       = 10.0f;
 static const auto  c_MaxMoveOverEdgeDistance    = 300.0f;
 
+#if IMGUI_VERSION_NUM >= 19298 // Dear ImGui 1.93 renamed ImDrawFlags_RoundCornersXXX to ImDrawFlags_RoundXXX
+static const auto  c_AllRoundCornersFlags = ImDrawFlags_RoundAll;
+#else
 static const auto  c_AllRoundCornersFlags = ImDrawFlags_RoundCornersAll;
+#endif
 
 
 //------------------------------------------------------------------------------
