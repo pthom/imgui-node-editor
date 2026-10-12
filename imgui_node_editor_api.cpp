@@ -139,8 +139,17 @@ void ax::NodeEditor::PopStyleVar(int count)
     CurrentEditor()->GetStyle().PopVar(count);
 }
 
+static ax::NodeEditor::BeginHook s_BeginHook = nullptr;
+
+void ax::NodeEditor::SetBeginHook(BeginHook hook)
+{
+    s_BeginHook = hook;
+}
+
 void ax::NodeEditor::Begin(const char* id, const ImVec2& size)
 {
+    if (s_BeginHook)
+        s_BeginHook();
     CurrentEditor()->Begin(id, size);
 }
 
