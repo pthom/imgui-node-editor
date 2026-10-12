@@ -148,10 +148,20 @@ static const float c_SelectionFadeOutDuration   = 0.15f; // seconds
 static const auto  c_MaxMoveOverEdgeSpeed       = 10.0f;
 static const auto  c_MaxMoveOverEdgeDistance    = 300.0f;
 
-#if IMGUI_VERSION_NUM > 18101
+#if IMGUI_VERSION_NUM >= 19298 // Dear ImGui 1.93 renamed ImDrawFlags_RoundCornersXXX to ImDrawFlags_RoundXXX
+static const auto  c_AllRoundCornersFlags = ImDrawFlags_RoundAll;
+#elif IMGUI_VERSION_NUM > 18101
 static const auto  c_AllRoundCornersFlags = ImDrawFlags_RoundCornersAll;
 #else
 static const auto  c_AllRoundCornersFlags = 15;
+#endif
+
+// Borders and outlines are centered on their bounds: an outline drawn under the node's background shows its outer half.
+// Dear ImGui 1.93 strokes closed shapes inside by default, which would hide it under the background.
+#if IMGUI_VERSION_NUM >= 19298
+static const ImDrawFlags c_BorderStrokeFlags = ImDrawFlags_StrokeCenter;
+#else
+static const int c_BorderStrokeFlags = 0;
 #endif
 
 
@@ -593,7 +603,7 @@ void ed::Pin::Draw(ImDrawList* drawList, DrawFlags flags)
                 m_BorderColor, m_Rounding, m_Corners, m_BorderWidth);
 #else
             drawList->AddRect(m_Bounds.Min, m_Bounds.Max,
-                m_BorderColor, m_Rounding, m_BorderWidth, m_Corners);
+                m_BorderColor, m_Rounding, m_BorderWidth, m_Corners | c_BorderStrokeFlags);
 #endif
         }
 
@@ -701,7 +711,7 @@ void ed::Node::Draw(ImDrawList* drawList, DrawFlags flags)
                 drawList->AddRect(
                     m_GroupBounds.Min,
                     m_GroupBounds.Max,
-                    m_GroupBorderColor, m_GroupRounding, m_GroupBorderWidth, c_AllRoundCornersFlags);
+                    m_GroupBorderColor, m_GroupRounding, m_GroupBorderWidth, c_AllRoundCornersFlags | c_BorderStrokeFlags);
 #endif
             }
         }
@@ -759,7 +769,7 @@ void ed::Node::DrawBorder(ImDrawList* drawList, ImU32 color, float thickness, fl
             color, ImMax(0.0f, m_Rounding + offset), c_AllRoundCornersFlags, thickness);
 #else
         drawList->AddRect(m_Bounds.Min - extraOffset, m_Bounds.Max + extraOffset,
-            color, ImMax(0.0f, m_Rounding + offset), thickness, c_AllRoundCornersFlags);
+            color, ImMax(0.0f, m_Rounding + offset), thickness, c_AllRoundCornersFlags | c_BorderStrokeFlags);
 #endif
     }
 }
@@ -1533,9 +1543,17 @@ void ed::EditorContext::End()
         m_DrawList->AddRectFilled(VIEW_POS, VIEW_POS + VIEW_SIZE, GetColor(StyleColor_Bg));
 
         for (float x = fmodf(offset.x, GRID_SX); x < VIEW_SIZE.x; x += GRID_SX)
+#if IMGUI_VERSION_NUM >= 19298 // Dear ImGui 1.93's AddLine() is centered on its points: AddLineV() stays on whole pixels
+            m_DrawList->AddLineV(VIEW_POS.x + x, VIEW_POS.y, VIEW_POS.y + VIEW_SIZE.y, GRID_COLOR);
+#else
             m_DrawList->AddLine(ImVec2(x, 0.0f) + VIEW_POS, ImVec2(x, VIEW_SIZE.y) + VIEW_POS, GRID_COLOR);
+#endif
         for (float y = fmodf(offset.y, GRID_SY); y < VIEW_SIZE.y; y += GRID_SY)
+#if IMGUI_VERSION_NUM >= 19298
+            m_DrawList->AddLineH(VIEW_POS.x, VIEW_POS.x + VIEW_SIZE.x, VIEW_POS.y + y, GRID_COLOR);
+#else
             m_DrawList->AddLine(ImVec2(0.0f, y) + VIEW_POS, ImVec2(VIEW_SIZE.x, y) + VIEW_POS, GRID_COLOR);
+#endif
     }
 # endif
 
