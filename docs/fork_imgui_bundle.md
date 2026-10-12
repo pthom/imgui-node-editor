@@ -24,7 +24,7 @@ In the order of the commits:
 
 | Theme | What |
 |---|---|
-| Fixes | Drags that started outside of the editor window are ignored. A node covered by another node does not steal the hover / click of the node in front of it. Compatibility with Dear ImGui 1.92.6 to 1.93 (in 1.93: the renamed `ImDrawFlags_RoundXXX`, and the zoomed canvas sets the draw list's pixel density, not only its fringe scale) |
+| Fixes | Drags that started outside of the editor window are ignored. A node covered by another node does not steal the hover / click of the node in front of it. At 100% zoom, text and borders stay sharp: the canvas is placed on whole framebuffer pixels (it could land on half a pixel after a resize or a navigation, which blurred them with one pixel per point). Compatibility with Dear ImGui 1.92.6 to 1.93 (in 1.93: the renamed `ImDrawFlags_RoundXXX`, and the zoomed canvas sets the draw list's pixel density, not only its fringe scale) |
 | Style | `StyleVar_GridSize`: size of the background grid cells |
 | Documentation | API reference comments in `imgui_node_editor.h`; keyboard and mouse interactions in the [README](README.md) |
 | Canvas: clip rects | Clip rects are transformed once, after the draw channels are merged. Fixes a crash in the renderer after `Suspend()` / `Resume()` (upstream issue 282), and geometry that disappeared in docked windows, or when a popup was opened while the view was panned or zoomed |

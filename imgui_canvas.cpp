@@ -127,6 +127,11 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
     m_WidgetSize = ImSelectPositive(size, ImGui::GetContentRegionAvail());
     m_WidgetRect = ImRect(m_WidgetPosition, m_WidgetPosition + m_WidgetSize);
     m_DrawList = ImGui::GetWindowDrawList();
+# if defined(IMGUI_HAS_VIEWPORT)
+    m_FramebufferScale = ImGui::GetWindowViewport()->FramebufferScale;
+# else
+    m_FramebufferScale = ImGui::GetMainViewport()->FramebufferScale;
+# endif
 
     UpdateViewTransformPosition();
 
@@ -515,9 +520,18 @@ ImRect ImGuiEx::Canvas::CalcViewRect(const CanvasView& view) const
     return result;
 }
 
+static inline float ImSnapToPixel(float value, float framebufferScale)
+{
+    return framebufferScale > 0.0f ? ImFloor(value * framebufferScale + 0.5f) / framebufferScale : value;
+}
+
 void ImGuiEx::Canvas::UpdateViewTransformPosition()
 {
-    m_ViewTransformPosition = m_View.Origin + m_WidgetPosition;
+    // Snapped to the framebuffer's pixels: text and 1 px lines are drawn on whole pixels in local space, and a fractional
+    // translation would blur them (visible with one framebuffer pixel per point, as on most Windows screens).
+    const ImVec2 position = m_View.Origin + m_WidgetPosition;
+    m_ViewTransformPosition.x = ImSnapToPixel(position.x, m_FramebufferScale.x);
+    m_ViewTransformPosition.y = ImSnapToPixel(position.y, m_FramebufferScale.y);
 }
 
 void ImGuiEx::Canvas::SaveInputState()

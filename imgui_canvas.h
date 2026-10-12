@@ -242,6 +242,7 @@ private:
     ImRect      m_ViewRect;
 
     ImVec2 m_ViewTransformPosition;
+    ImVec2 m_FramebufferScale = ImVec2(1.0f, 1.0f);
 
     int m_SuspendCounter = 0;
 
