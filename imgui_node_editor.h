@@ -363,6 +363,12 @@ IMGUI_NODE_EDITOR_API void PopStyleVar(int count = 1); // Pops the last `count` 
 IMGUI_NODE_EDITOR_API void Begin(const char* id, const ImVec2& size = ImVec2(0, 0));
 IMGUI_NODE_EDITOR_API void End(); // Ends the editor started by Begin()
 
+// A function called at the start of every editor's Begin(), with that editor current: e.g. one that sets the editor's
+// colors from the application's theme. One for all editors (nullptr: none). It runs after the style colors pushed
+// before Begin(), which it may overwrite: push them after Begin().
+using BeginHook = void (*)();
+IMGUI_NODE_EDITOR_API void SetBeginHook(BeginHook hook);
+
 // --- Nodes & pins ---------------------------------------------------------
 // Inside Begin/End: declare each node with BeginNode(id) ... EndNode(),
 // and (optionally) declare its pins with BeginPin(id, kind) ... EndPin()
