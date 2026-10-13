@@ -15,10 +15,10 @@ Nothing in this patch is specific to imgui-node-editor.
  2 files changed, 12 insertions(+)
 
 diff --git a/imgui_internal.h b/imgui_internal.h
-index 615b16c42..cd6f208c4 100644
+index eb61269b5..b74a8df5c 100644
 --- a/imgui_internal.h
 +++ b/imgui_internal.h
-@@ -2439,6 +2439,10 @@ struct ImGuiIDStackTool
+@@ -2496,6 +2496,10 @@ struct ImGuiIDStackTool
  
  typedef void (*ImGuiContextHookCallback)(ImGuiContext* ctx, ImGuiContextHook* hook);
  
@@ -26,10 +26,10 @@ index 615b16c42..cd6f208c4 100644
 +#define IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE
 +typedef bool (*ImGuiInputTextMultilineOverride)(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data);
 +
- #define IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW
- // [ADAPT_IMGUI_BUNDLE]: added ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow (called at the start of Begin() and at the end of End())
- // They let a library that changes the coordinate space (e.g. the zoomable canvas of imgui-node-editor) know when a window is begun from inside it.
-@@ -2755,6 +2759,10 @@ struct ImGuiContext
+ // [ADAPT_IMGUI_BUNDLE]: signature of ImGuiContext::BeginWindowCallback / EndWindowCallback
+ #define IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS
+ typedef void (*ImGuiBeginEndWindowCallback)(ImGuiContext* ctx, void* user_data);
+@@ -2813,6 +2817,10 @@ struct ImGuiContext
      ImGuiInputTextState     InputTextState;
      ImGuiTextIndex          InputTextLineIndex;                 // Temporary storage
      ImGuiInputTextDeactivatedState InputTextDeactivatedState;
@@ -41,10 +41,10 @@ index 615b16c42..cd6f208c4 100644
      ImFontFlags             InputTextPasswordFontBackupFlags;
      ImGuiID                 InputTextReactivateId;              // ID of InputText to reactivate on next frame (for io.ConfigInputTextEnterKeepActive behavior)
 diff --git a/imgui_widgets.cpp b/imgui_widgets.cpp
-index 50da35265..52c81d8e7 100644
+index 180ef1cb6..272014c5a 100644
 --- a/imgui_widgets.cpp
 +++ b/imgui_widgets.cpp
-@@ -4087,6 +4087,10 @@ bool ImGui::InputText(const char* label, char* buf, size_t buf_size, ImGuiInputT
+@@ -4102,6 +4102,10 @@ bool ImGui::InputText(const char* label, char* buf, size_t buf_size, ImGuiInputT
  
  bool ImGui::InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
  {

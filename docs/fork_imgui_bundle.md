@@ -28,7 +28,7 @@ In the order of the commits:
 | Style | `StyleVar_GridSize`: size of the background grid cells. `SetBeginHook()`: a function called at the start of every editor's `Begin()`, e.g. to set its colors from the application's theme |
 | Documentation | API reference comments in `imgui_node_editor.h`; keyboard and mouse interactions in the [README](README.md) |
 | Canvas: clip rects | Clip rects are transformed once, after the draw channels are merged. Fixes a crash in the renderer after `Suspend()` / `Resume()` (upstream issue 282), and geometry that disappeared in docked windows, or when a popup was opened while the view was panned or zoomed |
-| Canvas: popups | With the Dear ImGui hooks of chapter 3, popups, combos, color pickers, tooltips and context menus opened from inside the editor are placed correctly, without `Suspend()` / `Resume()` |
+| Canvas: popups | With the Dear ImGui callbacks of chapter 3, popups, combos, color pickers, tooltips and context menus opened from inside the editor are placed correctly, without `Suspend()` / `Resume()` |
 | Canvas | `ImGuiEx::IsInsideCanvas()` |
 | Mouse | `ed::GetMousePosOnCanvas()`: the mouse in canvas coordinates, also where the editor is suspended |
 | Multiline text | `ed::InputTextMultiline()`: a multiline text field that works inside a node |
@@ -88,40 +88,43 @@ imgui-node-editor. Each one defines a macro, and this library enables the corres
 
 | Patch | Macro | What it adds to Dear ImGui | What you get |
 |---|---|---|---|
-| `0001-context-hooks-begin-end-window` | `IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW` | Two values in `ImGuiContextHookType`: `BeginWindow` and `EndWindow`, called at the start of `ImGui::Begin()` and at the end of `ImGui::End()` | Popups, combos, color pickers, tooltips and context menus without `Suspend()` / `Resume()`; child windows are reported |
+| `0001-begin-end-window-callbacks` | `IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS` | `ImGuiContext::BeginWindowCallback` and `EndWindowCallback` (with one user data), called at the start of `ImGui::Begin()` and at the end of `ImGui::End()` when they are set | Popups, combos, color pickers, tooltips and context menus without `Suspend()` / `Resume()`; child windows are reported |
 | `0002-input-text-multiline-override` | `IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE` | `ImGuiContext::InputTextMultilineOverride`, a function that `ImGui::InputTextMultiline()` calls instead of its own code when it is set | `ImGui::InputTextMultiline()` works unchanged inside a node, including when it is called by a third party widget |
 
 To apply them, from the folder of Dear ImGui:
 
 ```bash
-git apply path/to/imgui-node-editor/misc/imgui_patches/0001-context-hooks-begin-end-window.patch
+git apply path/to/imgui-node-editor/misc/imgui_patches/0001-begin-end-window-callbacks.patch
 git apply path/to/imgui-node-editor/misc/imgui_patches/0002-input-text-multiline-override.patch
 ```
 
 The `.patch` files are made against the `docking` branch. For the `master` branch, use
-`0001-context-hooks-begin-end-window.for-imgui-master.diff` instead of the first one (the end of `ImGui::End()` differs between
+`0001-begin-end-window-callbacks.for-imgui-master.diff` instead of the first one (the end of `ImGui::End()` differs between
 the two branches); the second patch is the same. Checked against `v1.92.9b` and `v1.92.9b-docking`, and against the
-`master` and `docking` branches of 2026-10-12 (1.93 WIP).
+`master` branch of 2026-10-13 and the `docking` branch of 2026-10-07 (1.93 WIP).
 
 If a patch does not apply to your version, it is small enough to be done by hand:
 
-- patch 1: add `ImGuiContextHookType_BeginWindow, ImGuiContextHookType_EndWindow` at the end of `enum ImGuiContextHookType`
-  (`imgui_internal.h`) and `#define IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW` next to it; call
-  `CallContextHooks(&g, ImGuiContextHookType_BeginWindow);` as the first statement of `ImGui::Begin()` (after `g` is defined), and
-  `CallContextHooks(&g, ImGuiContextHookType_EndWindow);` as the last statement of `ImGui::End()`.
+- patch 1: in `imgui_internal.h`, `#define IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS`, declare the function pointer type
+  `typedef void (*ImGuiBeginEndWindowCallback)(ImGuiContext* ctx, void* user_data);` and add three members to `ImGuiContext`:
+  `BeginWindowCallback` and `EndWindowCallback` of that type, and `void* BeginEndWindowCallbackUserData`, all `NULL`. In
+  `ImGui::Begin()`, as the first statement (after `g` is defined), call `g.BeginWindowCallback(&g, g.BeginEndWindowCallbackUserData)`
+  when it is not `NULL`; the same for `g.EndWindowCallback` as the last statement of `ImGui::End()`.
 - patch 2: in `imgui_internal.h`, `#define IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE`, declare the function pointer type
   `ImGuiInputTextMultilineOverride` (same parameters as `InputTextMultiline()`, returns `bool`) and add a member
   `ImGuiInputTextMultilineOverride InputTextMultilineOverride = NULL;` to `ImGuiContext`; at the top of `ImGui::InputTextMultiline()`,
   call it and return its result when it is not `NULL`.
 
-How the hooks are used: `Canvas::Begin()` registers them and `Canvas::End()` removes them. When a window is begun from inside the
-canvas, the BeginWindow hook converts its position to screen space (the position given with `SetNextWindowPos()`, and the positions
-recorded by `OpenPopup()`), anchors combo popups below their combo, and suspends the canvas; the EndWindow hook resumes it.
+How the callbacks are used: `Canvas::Begin()` saves the previous values and sets its own, and `Canvas::End()` restores them (an
+editor may be inside a popup of another one). When a window is begun from inside the canvas, the begin callback converts its
+position to screen space (the position given with `SetNextWindowPos()`, and the positions recorded by `OpenPopup()`), anchors combo
+popups below their combo, and suspends the canvas; the end callback resumes it.
 The idea comes from [@lukaasm](https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764).
 
-*For the maintainer.* The patches are the two commits "Context hooks..." and "ImGuiContext::InputTextMultilineOverride" of the
-`imgui_bundle` branch of [pthom/imgui](https://github.com/pthom/imgui). After a rebase of that fork on a new Dear ImGui, refresh them
-with `git format-patch --no-signature --zero-commit -N -o <this folder> <first commit>~1..<second commit>`, rename the two files, and
+*For the maintainer.* The patches are the two commits "ImGuiContext::BeginWindowCallback..." and
+"ImGuiContext::InputTextMultilineOverride" of the `imgui_bundle` branch of [pthom/imgui](https://github.com/pthom/imgui). After a
+rebase of that fork on a new Dear ImGui, refresh them with
+`git format-patch --no-signature --zero-commit -N -o <this folder> <first commit>~1..<second commit>`, rename the two files, and
 check them with `git apply --check` against the new upstream tag (and rebuild the `master` variant if its check fails).
 
 

@@ -1,0 +1,58 @@
+diff --git a/imgui.cpp b/imgui.cpp
+index 7fa2d49e8..c1cbec803 100644
+--- a/imgui.cpp
++++ b/imgui.cpp
+@@ -7527,6 +7527,11 @@ static void SetWindowActiveForSkipRefresh(ImGuiWindow* window)
+ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
+ {
+     ImGuiContext& g = *GImGui;
++
++    // [ADAPT_IMGUI_BUNDLE]: see ImGuiContext::BeginWindowCallback
++    if (g.BeginWindowCallback != NULL)
++        g.BeginWindowCallback(&g, g.BeginEndWindowCallbackUserData);
++
+     const ImGuiStyle& style = g.Style;
+     IM_ASSERT(name != NULL && name[0] != '\0');     // Window name required
+     IM_ASSERT(g.WithinFrameScope);                  // Forgot to call ImGui::NewFrame()
+@@ -8384,6 +8389,10 @@ void ImGui::End()
+ 
+     g.CurrentWindowStack.pop_back();
+     SetCurrentWindow(g.CurrentWindowStack.Size == 0 ? NULL : g.CurrentWindowStack.back().Window);
++
++    // [ADAPT_IMGUI_BUNDLE]: see ImGuiContext::EndWindowCallback
++    if (g.EndWindowCallback != NULL)
++        g.EndWindowCallback(&g, g.BeginEndWindowCallbackUserData);
+ }
+ 
+ void ImGui::PushItemFlag(ImGuiItemFlags option, bool enabled)
+diff --git a/imgui_internal.h b/imgui_internal.h
+index d2a8595a1..4735a07e1 100644
+--- a/imgui_internal.h
++++ b/imgui_internal.h
+@@ -2228,6 +2228,11 @@ struct ImGuiIDStackTool
+ //-----------------------------------------------------------------------------
+ 
+ typedef void (*ImGuiContextHookCallback)(ImGuiContext* ctx, ImGuiContextHook* hook);
++
++// [ADAPT_IMGUI_BUNDLE]: signature of ImGuiContext::BeginWindowCallback / EndWindowCallback
++#define IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS
++typedef void (*ImGuiBeginEndWindowCallback)(ImGuiContext* ctx, void* user_data);
++
+ enum ImGuiContextHookType { ImGuiContextHookType_NewFramePre, ImGuiContextHookType_NewFramePost, ImGuiContextHookType_EndFramePre, ImGuiContextHookType_EndFramePost, ImGuiContextHookType_RenderPre, ImGuiContextHookType_RenderPost, ImGuiContextHookType_Shutdown, ImGuiContextHookType_PendingRemoval_ };
+ 
+ struct ImGuiContextHook
+@@ -2579,6 +2584,14 @@ struct ImGuiContext
+     // Hooks
+     ImVector<ImGuiContextHook>          Hooks;                  // Hooks for extensions (e.g. test engine)
+     ImGuiID                             HookIdNext;             // Next available HookId
++    // [ADAPT_IMGUI_BUNDLE]: when set, Begin() calls BeginWindowCallback at its start, and End() calls EndWindowCallback at its end.
++    // They let a library that changes the coordinate space (e.g. the zoomable canvas of imgui-node-editor) know when a window is
++    // begun from inside it. One slot: a library saves the previous values when it sets them, and restores them when it is done.
++    // Both run while the parent window is current. They get no window name or flags: BeginWindowCallback reads g.NextWindowData.
++    // cf https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764
++    ImGuiBeginEndWindowCallback         BeginWindowCallback = NULL;
++    ImGuiBeginEndWindowCallback         EndWindowCallback = NULL;
++    void*                               BeginEndWindowCallbackUserData = NULL;
+     ImGuiDemoMarkerCallback             DemoMarkerCallback;
+ 
+     // Localization

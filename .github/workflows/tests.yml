@@ -102,15 +102,15 @@ jobs:
 
       - name: Apply the patches of misc/imgui_patches
         run: |
-          git -C imgui_docking apply --verbose ../misc/imgui_patches/0001-context-hooks-begin-end-window.patch
+          git -C imgui_docking apply --verbose ../misc/imgui_patches/0001-begin-end-window-callbacks.patch
           git -C imgui_docking apply --verbose ../misc/imgui_patches/0002-input-text-multiline-override.patch
-          git -C imgui_master  apply --verbose ../misc/imgui_patches/0001-context-hooks-begin-end-window.for-imgui-master.diff
+          git -C imgui_master  apply --verbose ../misc/imgui_patches/0001-begin-end-window-callbacks.for-imgui-master.diff
           git -C imgui_master  apply --verbose ../misc/imgui_patches/0002-input-text-multiline-override.patch
 
       - name: Compile against the patched Dear ImGui
         run: |
           for imgui in imgui_docking imgui_master; do
-            grep -q "define IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW" $imgui/imgui_internal.h
+            grep -q "define IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS" $imgui/imgui_internal.h
             grep -q "define IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE" $imgui/imgui_internal.h
             for f in imgui_canvas.cpp imgui_node_editor.cpp imgui_node_editor_api.cpp; do
               echo "== $imgui (patched): $f"

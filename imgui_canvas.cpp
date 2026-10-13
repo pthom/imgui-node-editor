@@ -173,20 +173,23 @@ bool ImGuiEx::Canvas::Begin(ImGuiID id, const ImVec2& size)
     m_InBeginEnd = true;
 
     // Popups, combos, color pickers and tooltips begun from inside the canvas work without Suspend() / Resume() when Dear ImGui
-    // provides the context hooks ImGuiContextHookType_BeginWindow / EndWindow (they are not part of Dear ImGui: it is a small patch,
-    // see misc/imgui_patches). The hooks convert the position of the window to screen space and suspend the canvas while it is open.
+    // provides ImGuiContext::BeginWindowCallback / EndWindowCallback (they are not part of Dear ImGui: it is a small patch,
+    // see misc/imgui_patches). The callbacks convert the position of the window to screen space and suspend the canvas while it is open.
     // Without them, user code must wrap such windows in Suspend() / Resume(), as with the upstream version of this library.
     // (idea of @lukaasm, https://github.com/thedmd/imgui-node-editor/issues/242#issuecomment-1681806764)
-# if defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
+# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
     {
-        auto beginWindowHook = ImGuiContextHook{};
-        beginWindowHook.UserData = this;
-        beginWindowHook.Type = ImGuiContextHookType_BeginWindow;
-        beginWindowHook.Callback = []( ImGuiContext * context, ImGuiContextHook * hook )
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        m_PreviousBeginWindowCallback = g.BeginWindowCallback;
+        m_PreviousEndWindowCallback = g.EndWindowCallback;
+        m_PreviousBeginEndWindowCallbackUserData = g.BeginEndWindowCallbackUserData;
+        g.BeginEndWindowCallbackUserData = this;
+
+        g.BeginWindowCallback = []( ImGuiContext * context, void * userData )
         {
             //ImGui::SetNextWindowViewport( ImGui::GetCurrentWindow()->Viewport->ID );
 
-            auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+            auto canvas = reinterpret_cast< Canvas * >( userData );
 
             // A child window is about to begin inside the canvas: this cannot work (BeginChildEx() sets the child flags right before calling Begin())
             if ( canvas->m_BeginWindowDepth == 0 && canvas->m_SuspendCounter == 0 && ( context->NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasChildFlags ) != 0 )
@@ -247,14 +250,9 @@ Sorry, child windows are incompatible with the canvas of imgui-node-editor, and 
             canvas->m_DrawList->ChannelsSetCurrent(lastChannel);
         };
 
-        m_beginWindowHook = ImGui::AddContextHook( ImGui::GetCurrentContext(), &beginWindowHook );
-
-        auto endWindowHook = ImGuiContextHook{};
-        endWindowHook.UserData = this;
-        endWindowHook.Type = ImGuiContextHookType_EndWindow;
-        endWindowHook.Callback = []( ImGuiContext * ctx, ImGuiContextHook * hook )
+        g.EndWindowCallback = []( ImGuiContext * context, void * userData )
         {
-            auto canvas = reinterpret_cast< Canvas * >( hook->UserData );
+            auto canvas = reinterpret_cast< Canvas * >( userData );
 
             canvas->m_BeginWindowDepth -= 1;
             if (canvas->m_BeginWindowDepth > 0)
@@ -267,10 +265,8 @@ Sorry, child windows are incompatible with the canvas of imgui-node-editor, and 
             ImGui::SetCursorScreenPos( canvas->m_BeginWindowCursorBackup );
             ImGui::GetCurrentWindow()->DC.IsSetPos = false;
         };
-
-        m_endWindowHook = ImGui::AddContextHook( ImGui::GetCurrentContext(), &endWindowHook );
     }
-# endif // IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW
+# endif // IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS
 
     return true;
 }
@@ -354,10 +350,12 @@ void ImGuiEx::Canvas::End()
 
     m_InBeginEnd = false;
 
-# if defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
+# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
     {
-        ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_beginWindowHook );
-        ImGui::RemoveContextHook( ImGui::GetCurrentContext(), m_endWindowHook );
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        g.BeginWindowCallback = m_PreviousBeginWindowCallback;
+        g.EndWindowCallback = m_PreviousEndWindowCallback;
+        g.BeginEndWindowCallbackUserData = m_PreviousBeginEndWindowCallbackUserData;
     }
 # endif
 }
@@ -727,11 +725,11 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
 // InputTextMultiline inside a canvas
 //------------------------------------------------------------------------------
 
-// A popup must be opened and begun while the canvas is suspended. With the BeginWindow / EndWindow hooks of Dear ImGui,
+// A popup must be opened and begun while the canvas is suspended. With the BeginWindow / EndWindow callbacks of Dear ImGui,
 // the canvas does it by itself; without them, we do it here.
 struct SuspendCanvasIfNoHook
 {
-# if !defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
+# if !defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
     ImGuiEx::Canvas* m_Canvas;
     SuspendCanvasIfNoHook(): m_Canvas(s_CanvasInLocalSpace) { if (m_Canvas) m_Canvas->Suspend(); }
     ~SuspendCanvasIfNoHook()                                { if (m_Canvas) m_Canvas->Resume(); }

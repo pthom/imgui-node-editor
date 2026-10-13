@@ -12,7 +12,7 @@ if (NOT TARGET imgui)
         # Dear ImGui + stack layout + the two patches of misc/imgui_patches (see docs/fork_imgui_bundle.md),
         # at a fixed tag: the branches "layouts" and "imgui_bundle" are rebased from time to time.
         GIT_REPOSITORY      https://github.com/pthom/imgui.git
-        GIT_TAG             bundle_20261012b
+        GIT_TAG             bundle_20261014b
     )
 
     FetchContent_MakeAvailable(imgui)

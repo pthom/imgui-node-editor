@@ -261,9 +261,11 @@ private:
     ImVec2 m_ViewportWorkSizeBackup;
 # endif
 
-    // Context hooks that suspend the canvas when a window is begun from inside it (see Begin())
-# if defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
-    ImGuiID m_beginWindowHook, m_endWindowHook;
+    // Dear ImGui's callbacks that suspend the canvas when a window is begun from inside it (see Begin())
+# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
+    ImGuiBeginEndWindowCallback m_PreviousBeginWindowCallback = nullptr; // Restored by End(): a canvas may be inside a popup of another one
+    ImGuiBeginEndWindowCallback m_PreviousEndWindowCallback = nullptr;
+    void* m_PreviousBeginEndWindowCallbackUserData = nullptr;
     ImVec2 m_BeginWindowCursorBackup;
     int m_BeginWindowDepth = 0;
 # endif
