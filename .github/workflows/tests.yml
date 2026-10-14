@@ -137,5 +137,10 @@ jobs:
       - name: Configure
         run: cmake -S examples -B build -DCMAKE_BUILD_TYPE=Release
 
+      # Each example copies the common fonts into the same folders. One example first, so that the others find them
+      # there: copy_if_different then only reads them. Built all at once, two copies collided on Windows.
       - name: Build
-        run: cmake --build build --config Release -j 4
+        shell: bash
+        run: |
+          cmake --build build --config Release -j 4 --target simple-example
+          cmake --build build --config Release -j 4
