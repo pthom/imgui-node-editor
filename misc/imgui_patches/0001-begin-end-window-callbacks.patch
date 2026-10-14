@@ -18,7 +18,7 @@ Nothing in this patch is specific to imgui-node-editor.
  2 files changed, 22 insertions(+)
 
 diff --git a/imgui.cpp b/imgui.cpp
-index 7daebbc2f..ef2196a6e 100644
+index 0a5432694..70df78e35 100644
 --- a/imgui.cpp
 +++ b/imgui.cpp
 @@ -8001,6 +8001,11 @@ static void SetWindowActiveForSkipRefresh(ImGuiWindow* window)
@@ -45,7 +45,7 @@ index 7daebbc2f..ef2196a6e 100644
  
  void ImGui::PushItemFlag(ImGuiItemFlags option, bool enabled)
 diff --git a/imgui_internal.h b/imgui_internal.h
-index 8bc21f10d..eb61269b5 100644
+index ae111b54d..b2b0449af 100644
 --- a/imgui_internal.h
 +++ b/imgui_internal.h
 @@ -2495,6 +2495,11 @@ struct ImGuiIDStackTool

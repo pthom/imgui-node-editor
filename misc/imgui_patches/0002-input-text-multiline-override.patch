@@ -15,7 +15,7 @@ Nothing in this patch is specific to imgui-node-editor.
  2 files changed, 12 insertions(+)
 
 diff --git a/imgui_internal.h b/imgui_internal.h
-index eb61269b5..b74a8df5c 100644
+index b2b0449af..cb4795878 100644
 --- a/imgui_internal.h
 +++ b/imgui_internal.h
 @@ -2496,6 +2496,10 @@ struct ImGuiIDStackTool
@@ -41,7 +41,7 @@ index eb61269b5..b74a8df5c 100644
      ImFontFlags             InputTextPasswordFontBackupFlags;
      ImGuiID                 InputTextReactivateId;              // ID of InputText to reactivate on next frame (for io.ConfigInputTextEnterKeepActive behavior)
 diff --git a/imgui_widgets.cpp b/imgui_widgets.cpp
-index 180ef1cb6..272014c5a 100644
+index 5f0fb8259..9542a8d28 100644
 --- a/imgui_widgets.cpp
 +++ b/imgui_widgets.cpp
 @@ -4102,6 +4102,10 @@ bool ImGui::InputText(const char* label, char* buf, size_t buf_size, ImGuiInputT

@@ -22,8 +22,8 @@ env:
   # (then the cause may be on its side), or the tests.
   IMGUI_BUNDLE_REF: main
   # Tags of https://github.com/ocornut/imgui used by the "stock Dear ImGui" checks
-  IMGUI_DOCKING_TAG: v1.92.9b-docking
-  IMGUI_MASTER_TAG: v1.92.9b
+  IMGUI_DOCKING_TAG: v1.93.0-docking
+  IMGUI_MASTER_TAG: v1.93.0
 
 jobs:
   tests:
