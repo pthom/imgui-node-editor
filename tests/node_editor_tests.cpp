@@ -370,8 +370,8 @@ static void ShowContextMenus()
     }
     ed::Resume();
 
-    // Background menu: without Suspend / Resume (possible when Dear ImGui provides the BeginWindow / EndWindow hooks)
-# if defined(IMGUI_HAS_CONTEXT_HOOK_BEGIN_WINDOW)
+    // Background menu: without Suspend / Resume (possible when Dear ImGui provides the BeginWindow / EndWindow callbacks)
+# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
     if (ed::ShowBackgroundContextMenu())
         ImGui::OpenPopup("background_menu");
     if (ImGui::BeginPopup("background_menu"))
