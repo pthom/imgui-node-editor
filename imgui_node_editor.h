@@ -487,8 +487,9 @@ IMGUI_NODE_EDITOR_API void EndGroupHint(); // Ends the group hint (see the examp
 
 // Returns the draw list used for the node's BACKGROUND layer (drawn under
 // the node's content). Useful to add badges, highlights, etc. behind a node.
+// It is available after EndNode(); nullptr outside Begin()/End(), and for a node not submitted in this frame.
 // TODO: Add a way to manage node background channels
-IMGUI_NODE_EDITOR_API ImDrawList* GetNodeBackgroundDrawList(NodeId nodeId); // available after EndNode(); nullptr outside Begin()/End(), and for a node not submitted in this frame
+IMGUI_NODE_EDITOR_API ImDrawList* GetNodeBackgroundDrawList(NodeId nodeId);
 
 // Declares an existing link between two pins. Call once per frame for every
 // link you want shown. Returns false when one of its pins was not drawn this frame.
@@ -616,12 +617,9 @@ IMGUI_NODE_EDITOR_API bool InputTextMultiline(const char* label, char* buf, size
 IMGUI_NODE_EDITOR_API bool IsActive();
 
 // --- Selection ------------------------------------------------------------
-// HasSelectionChanged returns true when the selection changed in the last
-// frame, also when asked between Begin() and End() (use it to react to a
-// selection change once, not every frame).
 // SelectNode/SelectLink with append=false replaces the current selection.
 
-IMGUI_NODE_EDITOR_API bool HasSelectionChanged(); // True during the frame after the selection changed
+IMGUI_NODE_EDITOR_API bool HasSelectionChanged(); // True when the selection changed in the last frame, also between Begin() and End()
 IMGUI_NODE_EDITOR_API int  GetSelectedObjectCount(); // The number of selected nodes and links
 IMGUI_NODE_EDITOR_API int  GetSelectedNodes(NodeId* nodes, int size); // Fills at most `size` nodes; returns their count
 IMGUI_NODE_EDITOR_API int  GetSelectedLinks(LinkId* links, int size); // Fills at most `size` links; returns their count
