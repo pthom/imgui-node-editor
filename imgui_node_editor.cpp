@@ -5128,7 +5128,6 @@ bool ed::CreateItemAction::Begin()
 {
     IM_ASSERT(false == m_InActive);
 
-    m_InActive        = true;
     m_CurrentStage    = m_NextStage;
     m_UserAction      = Unknown;
     if (m_CurrentStage == Create)
@@ -5136,9 +5135,11 @@ bool ed::CreateItemAction::Begin()
     m_LinkColor       = IM_COL32_WHITE;
     m_LinkThickness   = 1.0f;
 
+    // Nothing to create: stay inactive, so that EndCreate() may be called or not.
     if (m_CurrentStage == None)
         return false;
 
+    m_InActive    = true;
     m_LastChannel = Editor->GetDrawList()->_Splitter._Current;
 
     return true;
@@ -5146,7 +5147,6 @@ bool ed::CreateItemAction::Begin()
 
 void ed::CreateItemAction::End()
 {
-    IM_ASSERT(m_InActive);
     if (!m_InActive)
         return;
 
