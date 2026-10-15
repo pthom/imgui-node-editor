@@ -42,6 +42,7 @@ struct Scene
     std::string LastMenuItem;
     ed::NodeId  ContextNodeId = 0;
     bool   MoveWidgetsNodeRequest = false;   // tests ask the scene to move the first node (it must be done inside ed::Begin / ed::End)
+    bool   ResetRequest = false;             // tests ask the scene for a new editor (see ResetScene())
     ImVec2 MoveWidgetsNodePos;
 
     // Screen rect of the widgets placed inside nodes, updated each frame.
@@ -415,6 +416,14 @@ static void HandleCreation()
 
 void NodeEditorTests_ShowGui()
 {
+    if (gScene.ResetRequest && gScene.Editor != nullptr)
+    {
+        ed::DestroyEditor(gScene.Editor);
+        gScene.Editor = nullptr;
+        gScene.FirstFrame = true;
+    }
+    gScene.ResetRequest = false;
+
     if (gScene.Editor == nullptr)
     {
         ed::Config config;
@@ -508,6 +517,14 @@ void NodeEditorTests_Shutdown()
 //------------------------------------------------------------------------------
 // Test helpers
 //------------------------------------------------------------------------------
+// Each test starts from the same state: no popup open, a new editor (zoom 1, the view at its origin, the nodes at their first place)
+static void ResetScene(ImGuiTestContext* ctx)
+{
+    ctx->PopupCloseAll();
+    gScene.ResetRequest = true;
+    ctx->Yield(3);
+}
+
 static ImGuiWindow* TopPopupWindow()
 {
     ImGuiContext& g = *GImGui;
@@ -695,6 +712,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "combo");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.ComboIdx = 0;
@@ -712,6 +730,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "combo_negative_coords");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         const float em = ImGui::GetFontSize();
         gScene.MoveWidgetsNodePos = ImVec2(-em * 60.0f, -em * 40.0f);
         gScene.MoveWidgetsNodeRequest = true;
@@ -736,6 +755,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "combo_low_in_window");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         ctx->WindowFocus("//Node editor tests");
         SetZoom(ctx, 2.0f);
         BringIntoView(ctx, "combo");
@@ -764,6 +784,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "color_edit");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             const ImVec4 initial_color(0.2f, 0.4f, 0.8f, 1.0f);
@@ -787,6 +808,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "input_text_multiline");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             ImStrncpy(gScene.Text, "Line 1\nLine 2\nLine 3", IM_ARRAYSIZE(gScene.Text));
@@ -808,6 +830,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "popup");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.PlainPopupClicks = 0;
@@ -827,6 +850,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "popup_legacy");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.LegacyPopupClicks = 0;
@@ -846,6 +870,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "tooltip");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             BringIntoView(ctx, "tooltip_target");
@@ -866,6 +891,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "node_width");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             BringIntoView(ctx, "width_title");
@@ -893,6 +919,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "layout_combo");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.LayoutComboIdx = 0;
@@ -915,6 +942,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "angled_links");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         ctx->WindowFocus("//Node editor tests");
         SetZoom(ctx, 1.0f);
         BringIntoView(ctx, "link_title");
@@ -941,6 +969,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "color_in_pin");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             const ImVec4 initial_color(0.8f, 0.3f, 0.2f, 1.0f);
@@ -975,6 +1004,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "draw_channels");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.ChannelsPopupClicks = 0;
@@ -994,6 +1024,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "overlapping_nodes");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.BackNodeClicks = 0;
@@ -1011,6 +1042,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "docked");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) == 0)
         {
             ctx->LogWarning("Docking is not enabled: test skipped");
@@ -1053,6 +1085,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "own_os_window");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
         {
             ctx->LogWarning("Multi-viewports are not enabled: test skipped");
@@ -1109,6 +1142,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "popup_leaves_app_window");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
         {
             ctx->LogWarning("Multi-viewports are not enabled: test skipped");
@@ -1151,6 +1185,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "context_menus");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             gScene.LastMenuItem = "";
@@ -1185,6 +1220,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
     t = IM_REGISTER_TEST(engine, "node_editor", "mouse_pos_on_canvas");
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
+        ResetScene(ctx);
         RunInAllViews(ctx, [](ImGuiTestContext* ctx, const char* view_name)
         {
             BringIntoView(ctx, "link_out");
@@ -1207,5 +1243,25 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
             ctx->Yield(2);
             IM_CHECK(!gScene.LinkDragged);
         });
+    };
+
+    // ## A pan with the right button moves the view exactly as far as the mouse, at every zoom
+    t = IM_REGISTER_TEST(engine, "node_editor", "pan_follows_the_mouse");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        ResetScene(ctx);
+        const float em = ImGui::GetFontSize();
+        const float zooms[] = { 0.5f, 1.0f, 2.0f };
+        for (float zoom : zooms)
+        {
+            SetZoom(ctx, zoom);
+            const ImVec2 anchor_before_pan = gScene.ZoomAnchor;
+            const ImVec2 delta(em * 6.0f, em * 4.0f);
+            PanView(ctx, delta);
+            const ImVec2 moved = gScene.ZoomAnchor - anchor_before_pan;
+            ctx->LogInfo("zoom=%.1f the view moved by (%.0f,%.0f), the mouse by (%.0f,%.0f)", zoom, moved.x, moved.y, delta.x, delta.y);
+            IM_CHECK_LT(ImAbs(moved.x - delta.x), 2.0f);
+            IM_CHECK_LT(ImAbs(moved.y - delta.y), 2.0f);
+        }
     };
 }
