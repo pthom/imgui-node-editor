@@ -121,7 +121,7 @@ struct Config
         , SelectButtonIndex(0)
         , NavigateButtonIndex(1)
         , ContextMenuButtonIndex(1)
-        , EnableSmoothZoom(false)
+        , EnableSmoothZoom(true)
 # ifdef __APPLE__
         , SmoothZoomPower(1.1f)
 # else
