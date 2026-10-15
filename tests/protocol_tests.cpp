@@ -239,3 +239,51 @@ TEST_CASE(PreviewThickness, "protocols.new_link_preview_has_the_requested_thickn
         same = ImFabs(link[i].x - preview[i].x) < 0.01f && ImFabs(link[i].y - preview[i].y) < 0.01f;
     test::Check(same, "the preview is drawn like a link of the requested thickness: %d and %d vertices", (int)preview.size(), (int)link.size());
 }
+
+//------------------------------------------------------------------------------
+// EndCreate() may follow every BeginCreate(), or only the ones that returned
+// true (the convention of develop's 01fa1b9).
+//------------------------------------------------------------------------------
+namespace {
+
+void CheckEndCreateConvention(bool endOnlyAfterTrueBegin)
+{
+    test::Storage storage;
+    test::Session session(&storage);
+    std::map<int, ImVec2> pins;
+    int created = 0;
+    session.DefaultContent = [&](int frame)
+    {
+        TwoNodes(frame, pins);
+        const bool begun = ed::BeginCreate();
+        if (begun)
+        {
+            ed::PinId start, end;
+            if (ed::QueryNewLink(&start, &end) && start && end && ed::AcceptNewItem())
+                ++created;
+        }
+        if (begun || !endOnlyAfterTrueBegin)
+            ed::EndCreate();
+    };
+
+    const int assertsBefore = test::AssertCount();
+    session.Run(3);
+    DragLinkOverTarget(session, pins);
+    test::MouseButton(0, false);
+    session.Run(5);
+
+    test::Check(created == 1, "the dragged link is created once: %d", created);
+    test::Check(test::AssertCount() == assertsBefore, "no IM_ASSERT failures: %d", test::AssertCount() - assertsBefore);
+}
+
+} // namespace
+
+TEST_CASE(EndCreateAfterEveryBegin, "protocols.end_create_after_every_begin_create", "01fa1b9", test::TestFlags_None)
+{
+    CheckEndCreateConvention(false);
+}
+
+TEST_CASE(EndCreateOnlyAfterTrueBegin, "protocols.end_create_only_after_true_begin_create", "01fa1b9", test::TestFlags_None)
+{
+    CheckEndCreateConvention(true);
+}
