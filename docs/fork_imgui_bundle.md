@@ -1,7 +1,7 @@
 # What this fork adds to imgui-node-editor
 
 This is the fork of [thedmd/imgui-node-editor](https://github.com/thedmd/imgui-node-editor) used by
-[Dear ImGui Bundle](https://github.com/pthom/imgui_bundle) (branch `imgui_bundle`, based on upstream `develop`).
+[Dear ImGui Bundle](https://github.com/pthom/imgui_bundle) (branch `imgui_bundle`, based on upstream `master`, v0.9.4).
 It is usable without Dear ImGui Bundle: it builds against a stock Dear ImGui, and the features that need a patched
 Dear ImGui switch themselves on when the patch is present.
 
@@ -24,11 +24,10 @@ In the order of the commits:
 
 | Theme | What |
 |---|---|
-| Fixes | Drags that started outside of the editor window are ignored. A node covered by another node does not steal the hover / click of the node in front of it. At 100% zoom, text and borders stay sharp: the canvas is placed on whole framebuffer pixels (it could land on half a pixel after a resize or a navigation, which blurred them with one pixel per point). Compatibility with Dear ImGui 1.92.6 to 1.93 (in 1.93: the renamed `ImDrawFlags_RoundXXX`, and the zoomed canvas sets the draw list's pixel density, not only its fringe scale; the borders and the hover and selection outlines stay centered on the node's bounds, where 1.93 strokes closed shapes inside by default and hid the outlines under the node's background; the grid uses `AddLineV()` / `AddLineH()`, which keep 1 pixel lines on whole pixels) |
+| Fixes | A pan with the navigate button may start on a widget of a node that does not use this button (upstream's fix of issue 238 refused it). `EndCreate()` may follow every `BeginCreate()`, or only the ones that returned true: both conventions work. Smooth zoom is on by default, as on upstream `develop`: without it, a trackpad's fractional wheel steps do not zoom |
 | Style | `StyleVar_GridSize`: size of the background grid cells. `SetBeginHook()`: a function called at the start of every editor's `Begin()`, e.g. to set its colors from the application's theme |
 | Documentation | API reference comments in `imgui_node_editor.h`; keyboard and mouse interactions in the [README](README.md) |
-| Canvas: clip rects | Clip rects are transformed once, after the draw channels are merged. Fixes a crash in the renderer after `Suspend()` / `Resume()` (upstream issue 282), and geometry that disappeared in docked windows, or when a popup was opened while the view was panned or zoomed |
-| Canvas: popups | With the Dear ImGui callbacks of chapter 3, popups, combos, color pickers, tooltips and context menus opened from inside the editor are placed correctly, without `Suspend()` / `Resume()` |
+| Canvas: popups | With the Dear ImGui callbacks of chapter 3, popups, combos, color pickers, tooltips and context menus opened from inside the editor are placed correctly, without `Suspend()` / `Resume()`. Inside a node, the editor suspends itself (`Canvas::SetWindowSuspendHandlers()`) |
 | Canvas | `ImGuiEx::IsInsideCanvas()` |
 | Mouse | `ed::GetMousePosOnCanvas()`: the mouse in canvas coordinates, also where the editor is suspended |
 | Multiline text | `ed::InputTextMultiline()`: a multiline text field that works inside a node |
@@ -36,7 +35,14 @@ In the order of the commits:
 | Node width | `Config::ForceWindowContentWidthToNodeWidth`: separators, headers, wrapped text and default item widths use the width of the node. A node that grows at each frame, or that collapses to the width of one character, is detected and explained |
 | Links | Angled links (upstream PR 119): a link that would pass through its nodes is routed around them. Optional: `Style::AngledLinks`. The default link color follows the light / dark theme |
 | Input | `EditorContext::DisableUserInputThisFrame()`: a widget inside a node (a plot...) can keep the mouse for itself |
-| Tests | Automated tests, based on imgui_test_engine (chapter 5) |
+| Tests | Automated tests, based on imgui_test_engine (chapter 5); in upstream's headless suite, tests for the popups, the pan and `EndCreate()` |
+
+
+The first commits are generic, each with its tests in upstream's headless suite. They are also on branches of their own, based on
+upstream `master`, to be cherry-picked or merged:
+- `begin_end_window_callbacks`: popups begun inside a canvas, placed on screen with the window callbacks (chapter 3);
+- `end_create_optional`: `EndCreate()` optional after a `BeginCreate()` that returned false;
+- `pan_on_widgets`: a pan may start on a widget of a node.
 
 
 ## 2. Widgets inside nodes: what works
@@ -198,13 +204,13 @@ if (ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax())
 
 ## 5. Running the tests
 
-`tests/node_editor_tests.h` and `tests/node_editor_tests.cpp` contain 18 tests written with
+`tests/node_editor_tests.h` and `tests/node_editor_tests.cpp` contain 20 tests written with
 [imgui_test_engine](https://github.com/ocornut/imgui_test_engine). They build a small scene (nodes with a combo, a color editor, a
 multiline text, popups, a tooltip, context menus, a horizontal layout, links, a color editor inside a pin, a node that uses draw
 channels, two overlapping nodes) and drive it with a simulated mouse, at zoom 0.5 / 1 / 2
 and after a pan. They check that popups open where they should and that they can be used, and they inspect the draw list at each
-frame (no canvas marker left behind, clip rects inside the window, no visible node clipped away). One test runs with the window of
-the editor docked.
+frame (no canvas sentinel left behind, clip rects inside the window, no visible node clipped away). One test runs with the window of
+the editor docked. Each test starts from a new editor (zoom 1, the view at its origin), so that a failure shows when the test runs alone.
 
 The files do not depend on any application framework. To plug them into an application that already runs the test engine:
 
