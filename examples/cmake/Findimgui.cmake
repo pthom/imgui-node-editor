@@ -7,7 +7,7 @@ if (NOT TARGET imgui)
         # at a fixed tag: the branches "layouts" and "imgui_bundle" are rebased from time to time.
         # Upstream fetches thedmd/imgui b085dd8feac1595915d85243b5515af34a10a394 (feature/layout-external).
         GIT_REPOSITORY      https://github.com/pthom/imgui.git
-        GIT_TAG             bundle_20260921b
+        GIT_TAG             bundle_20261012b
     )
 
     FetchContent_MakeAvailable(imgui)

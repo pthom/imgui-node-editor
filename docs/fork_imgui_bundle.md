@@ -100,7 +100,8 @@ git apply path/to/imgui-node-editor/misc/imgui_patches/0002-input-text-multiline
 
 The `.patch` files are made against the `docking` branch. For the `master` branch, use
 `0001-context-hooks-begin-end-window.for-imgui-master.diff` instead of the first one (the end of `ImGui::End()` differs between
-the two branches); the second patch is the same. Checked against `v1.92.9b` and `v1.92.9b-docking`.
+the two branches); the second patch is the same. Checked against `v1.92.9b` and `v1.92.9b-docking`, and against the
+`master` and `docking` branches of 2026-10-12 (1.93 WIP).
 
 If a patch does not apply to your version, it is small enough to be done by hand:
 
