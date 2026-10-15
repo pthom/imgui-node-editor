@@ -2277,6 +2277,15 @@ bool ed::EditorContext::IsHoveredWithoutOverlapp() const
     return m_IsHoveredWithoutOverlapp;
 }
 
+bool ed::EditorContext::OwnsNavigateButton() const
+{
+# if IMGUI_VERSION_NUM >= 19070
+    return m_BackgroundId != 0 && ImGui::GetKeyOwner(ImGui::MouseButtonToKey(m_Config.NavigateButtonIndex)) == m_BackgroundId;
+# else
+    return false;
+# endif
+}
+
 bool ed::EditorContext::CanAcceptUserInput() const
 {
     return m_IsFocused && m_IsHovered;
@@ -2807,6 +2816,17 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
     auto backgroundClickButonIndex        = emitInteractiveAreaEx(ObjectId(), editorRect, backgroundExtraFlags);
     auto backgroundDoubleClickButtonIndex = isMouseDoubleClickOverBackground();
     auto isBackgroundActive               = ImGui::IsItemActive();
+    m_BackgroundId = ImGui::GetItemID();
+
+# if IMGUI_VERSION_NUM >= 19070
+    // A press of the navigate button inside the editor that no item takes (on a widget of a node which does not use
+    // this button, for example) is taken by the background until its release: it may start a pan. A widget which uses
+    // the button owns it, and keeps it.
+    const auto navigateKey = ImGui::MouseButtonToKey(m_Config.NavigateButtonIndex);
+    if (ImGui::IsMouseClicked(m_Config.NavigateButtonIndex) && ImGui::GetKeyOwner(navigateKey) == ImGuiKeyOwner_NoOwner
+        && ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly) && ImGui::IsWindowHovered())
+        ImGui::SetKeyOwner(navigateKey, m_BackgroundId, ImGuiInputFlags_LockUntilRelease);
+# endif
     auto isBackgroundHot                  = !hotObject;
     auto isDragging                       = ImGui::IsMouseDragging(0, 1) || ImGui::IsMouseDragging(1, 1) || ImGui::IsMouseDragging(2, 1);
 
@@ -3640,7 +3660,8 @@ ed::EditorAction::AcceptResult ed::NavigateAction::Accept(const Control& control
         return False;
 
     // A drag that enters the editor from another window was pressed on nothing of the editor's.
-    const auto isPressedOnEditor = control.BackgroundActive || control.ActiveObject != nullptr;
+    // A press on a widget of a node which does not use the navigate button is taken by the background (see BuildControl()).
+    const auto isPressedOnEditor = control.BackgroundActive || control.ActiveObject != nullptr || Editor->OwnsNavigateButton();
     if (Editor->CanAcceptUserInput() && isPressedOnEditor && ImGui::IsMouseDragging(Editor->GetConfig().NavigateButtonIndex, 0.0f))
     {
         m_Animation.Stop();
