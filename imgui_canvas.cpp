@@ -698,7 +698,13 @@ void ImGuiEx::Canvas::EnterLocalSpace()
 
 # if IMGUI_VERSION_NUM >= 19292
     m_LastPixelDensity = m_DrawList->_InvFringeScale;
-    m_DrawList->_SetPixelDensity(m_LastPixelDensity * m_View.Scale());
+    // Zoomed out, the anti-aliased fringe widens from one pixel toward one point (two pixels on a Retina screen): with
+    // a one pixel fringe, a thin stroke wavers from one row of pixels to the next. At zoom 1 and above, one pixel.
+    const float scale = m_View.Scale();
+    const float pixelDensity = scale < 1.0f
+        ? scale * ImMax(1.0f, m_LastPixelDensity * scale)
+        : m_LastPixelDensity * scale;
+    m_DrawList->_SetPixelDensity(pixelDensity);
 # else
     auto& fringeScale = ImFringeScaleRef(m_DrawList);
     m_LastFringeScale = fringeScale;
