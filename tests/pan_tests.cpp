@@ -65,6 +65,7 @@ TEST_CASE(PanFromBackground, "interaction.pan_from_the_background", "#238", test
 
 TEST_CASE(PanFromWidget, "interaction.pan_from_a_widget_in_a_node", "#238", test::TestFlags_None)
 {
+# if IMGUI_VERSION_NUM >= 19070
     test::Storage storage;
     test::Session session(&storage);
     PanScene scene;
@@ -74,6 +75,9 @@ TEST_CASE(PanFromWidget, "interaction.pan_from_a_widget_in_a_node", "#238", test
     const ImVec2 delta(80.0f, 50.0f);
     const ImVec2 moved = DragAndMeasure(session, scene, scene.ButtonCenter, delta);
     test::Check(Equal(moved, delta), "a drag from a button of a node (which uses another mouse button) pans the view: moved by (%g, %g), the mouse by (%g, %g)", moved.x, moved.y, delta.x, delta.y);
+# else
+    test::Skip("needs Dear ImGui 1.90.7 (the owner of a mouse button)");
+# endif
 }
 
 TEST_CASE(NoPanFromWidgetUsingTheButton, "interaction.no_pan_from_a_widget_using_the_navigate_button", "#238", test::TestFlags_None)
@@ -118,6 +122,7 @@ TEST_CASE(RightClickOnWidget, "interaction.right_click_on_a_widget_in_a_node", "
 
 TEST_CASE(NoClickAtTheEndOfAPan, "interaction.no_click_at_the_end_of_a_pan", "#238", test::TestFlags_None)
 {
+# if IMGUI_VERSION_NUM >= 19070
     test::Storage storage;
     test::Session session(&storage);
     PanScene scene;
@@ -130,4 +135,7 @@ TEST_CASE(NoClickAtTheEndOfAPan, "interaction.no_click_at_the_end_of_a_pan", "#2
     test::Check(Equal(moved, delta), "the drag pans the view: moved by (%g, %g)", moved.x, moved.y);
     test::Check(scene.ButtonContextMenus == 0, "the release that ends the pan opens no context menu of the button: %d times", scene.ButtonContextMenus);
     test::Check(scene.NodeContextMenus == 0, "nor of the node: %d times", scene.NodeContextMenus);
+# else
+    test::Skip("needs Dear ImGui 1.90.7 (the owner of a mouse button)");
+# endif
 }
