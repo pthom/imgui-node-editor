@@ -918,7 +918,11 @@ bool ImGuiEx::CanvasInputTextMultiline(const char* label, char* buf, size_t buf_
     const ImU32 frame_col = highlight
         ? GetColorU32(ImLerp(style.Colors[ImGuiCol_FrameBg], style.Colors[ImGuiCol_FrameBgHovered], 0.25f))
         : GetColorU32(ImGuiCol_FrameBg);
+# if IMGUI_VERSION_NUM >= 19140
     RenderNavCursor(frame_bb, box_id);
+# else
+    RenderNavHighlight(frame_bb, box_id);
+# endif
     RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, style.FrameRounding);
 
     // Draw the text, clipped to the inner area (no word-wrap, like the real widget).
