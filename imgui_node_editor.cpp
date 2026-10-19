@@ -385,6 +385,18 @@ static void ImDrawList_SwapSplitter(ImDrawList* drawList, ImDrawListSplitter& sp
 //        drawList->ChannelsSetCurrent(lastCurrentChannel);
 //}
 
+// The links and the node borders are at least one point wide on screen. Since Dear ImGui 1.93, a thinner stroke keeps
+// its true width and fades: zoomed out, a link one unit thick would almost vanish.
+static float VisibleStrokeThickness(const ed::EditorContext* editor, float thickness)
+{
+# if IMGUI_VERSION_NUM >= 19292
+    return ImMax(thickness, editor->GetView().InvScale());
+# else
+    IM_UNUSED(editor);
+    return thickness;
+# endif
+}
+
 static void ImDrawList_AddRectCompat(ImDrawList* drawList, const ImVec2& a, const ImVec2& b, ImU32 col, float rounding, int flags, float thickness)
 {
 # if IMGUI_VERSION_NUM >= 19298
@@ -786,7 +798,7 @@ void ed::Node::DrawBorder(ImDrawList* drawList, ImU32 color, float thickness, fl
         const ImVec2 extraOffset = ImVec2(offset, offset);
 
         ImDrawList_AddRectCompat(drawList, m_Bounds.Min - extraOffset, m_Bounds.Max + extraOffset,
-            color, ImMax(0.0f, m_Rounding + offset), c_AllRoundCornersFlags, thickness);
+            color, ImMax(0.0f, m_Rounding + offset), c_AllRoundCornersFlags, VisibleStrokeThickness(Editor, thickness));
     }
 }
 
@@ -987,14 +999,15 @@ void ed::Link::Draw(ImDrawList* drawList, ImU32 color, float extraThickness) con
     if (!m_IsLive)
         return;
 
-    const auto path = GetPath();
+    const auto path      = GetPath();
+    const auto thickness = VisibleStrokeThickness(Editor, m_Thickness + extraThickness);
 
     for (int i = 0; i < path.m_SegmentCount; ++i)
     {
         const bool isStart = i == 0;
         const bool isEnd   = i == path.m_SegmentCount - 1;
 
-        ImDrawList_AddBezierWithArrows(drawList, path.m_Segments[i], m_Thickness + extraThickness,
+        ImDrawList_AddBezierWithArrows(drawList, path.m_Segments[i], thickness,
             isStart && m_StartPin && m_StartPin->m_ArrowSize  > 0.0f ? m_StartPin->m_ArrowSize  + extraThickness : 0.0f,
             isStart && m_StartPin && m_StartPin->m_ArrowWidth > 0.0f ? m_StartPin->m_ArrowWidth + extraThickness : 0.0f,
               isEnd &&   m_EndPin &&   m_EndPin->m_ArrowSize  > 0.0f ?   m_EndPin->m_ArrowSize  + extraThickness : 0.0f,
