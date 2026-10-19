@@ -1414,13 +1414,15 @@ void ed::EditorContext::Begin(const char* id, const ImVec2& size)
     ImGui::PushID(id);
 
 # if IMGUI_VERSION_NUM >= 19070
-    // The release that ends a pan is no click for the items under the mouse, which moved with the view: a context menu
-    // would open there. Locked before the items are submitted.
-    const auto& io = ImGui::GetIO();
-    const auto  navigateButton = m_Config.NavigateButtonIndex;
-    if (m_NavigateAction.m_IsActive && m_BackgroundId != 0 && io.MouseReleased[navigateButton]
-        && io.MouseDragMaxDistanceSqr[navigateButton] >= io.MouseDragThreshold * io.MouseDragThreshold)
-        ImGui::SetKeyOwner(ImGui::MouseButtonToKey(navigateButton), m_BackgroundId, ImGuiInputFlags_LockThisFrame);
+    {
+        // The release that ends a pan is no click for the items under the mouse, which moved with the view: a context
+        // menu would open there. Locked before the items are submitted.
+        const auto& io = ImGui::GetIO();
+        const auto  navigateButton = m_Config.NavigateButtonIndex;
+        if (m_NavigateAction.m_IsActive && m_BackgroundId != 0 && io.MouseReleased[navigateButton]
+            && io.MouseDragMaxDistanceSqr[navigateButton] >= io.MouseDragThreshold * io.MouseDragThreshold)
+            ImGui::SetKeyOwner(ImGui::MouseButtonToKey(navigateButton), m_BackgroundId, ImGuiInputFlags_LockThisFrame);
+    }
 # endif
 
     m_BeginColorStackSize = m_Style.GetColorStackSize();
