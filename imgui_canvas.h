@@ -113,6 +113,10 @@ private:
 //     call canvas functions from same channel.
 struct Canvas
 {
+    // A canvas destroyed while Dear ImGui still points to it (a throwing IM_ASSERT left Begin() without End())
+    // removes itself from the context: the next ImGui::Begin() would call into freed memory
+    ~Canvas();
+
     // Begins drawing content of canvas plane.
     //
     // Returns true, and drawing must be ended with call to End(). A canvas

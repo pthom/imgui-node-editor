@@ -294,10 +294,42 @@ Sorry, child windows are incompatible with the canvas of imgui-node-editor, and 
     return true;
 }
 
+ImGuiEx::Canvas::~Canvas()
+{
+    ImGuiContext* g = ImGui::GetCurrentContext();
+    if (s_CanvasInLocalSpace == this)
+    {
+        s_CanvasInLocalSpace = nullptr;
+# if defined(IMGUI_HAS_INPUT_TEXT_MULTILINE_OVERRIDE)
+        if (g)
+            g->InputTextMultilineOverride = NULL;
+# endif
+    }
+# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
+    if (g && g->BeginEndWindowCallbackUserData == this)
+    {
+        g->BeginWindowCallback = m_PreviousBeginWindowCallback;
+        g->EndWindowCallback = m_PreviousEndWindowCallback;
+        g->BeginEndWindowCallbackUserData = m_PreviousBeginEndWindowCallbackUserData;
+    }
+# endif
+}
+
 void ImGuiEx::Canvas::End()
 {
     // If you're here, Begin() wasn't called.
     IM_ASSERT(m_InBeginEnd == true);
+
+    // Restored first: the asserts below may throw (the Python builds), and the callbacks would then point to a canvas
+    // that may be destroyed
+# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
+    {
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        g.BeginWindowCallback = m_PreviousBeginWindowCallback;
+        g.EndWindowCallback = m_PreviousEndWindowCallback;
+        g.BeginEndWindowCallbackUserData = m_PreviousBeginEndWindowCallbackUserData;
+    }
+# endif
 
     // If you're here, please make sure you do not interleave
     // channel splitter with canvas.
@@ -336,15 +368,6 @@ void ImGuiEx::Canvas::End()
     //m_DrawList->AddRect(m_WidgetPosition - ImVec2(1.0f, 1.0f), m_WidgetPosition + m_WidgetSize + ImVec2(1.0f, 1.0f), IM_COL32(196, 0, 0, 255));
 
     m_InBeginEnd = false;
-
-# if defined(IMGUI_HAS_BEGIN_END_WINDOW_CALLBACKS)
-    {
-        ImGuiContext& g = *ImGui::GetCurrentContext();
-        g.BeginWindowCallback = m_PreviousBeginWindowCallback;
-        g.EndWindowCallback = m_PreviousEndWindowCallback;
-        g.BeginEndWindowCallbackUserData = m_PreviousBeginEndWindowCallbackUserData;
-    }
-# endif
 }
 
 void ImGuiEx::Canvas::SetWindowSuspendHandlers(void (*suspend)(void* userData), void (*resume)(void* userData), void* userData)
