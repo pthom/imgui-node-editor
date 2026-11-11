@@ -116,6 +116,8 @@ struct Config
     int                     ContextMenuButtonIndex; // Mouse button index context menu action will react to (0-left, 1-right, 2-middle)
     bool                    EnableSmoothZoom;       // Smooth zoom with the wheel (false: steps through the zoom levels)
     float                   SmoothZoomPower;        // With smooth zoom, the zoom factor of one wheel step
+    // On a touch screen (with imgui_kit, as in Dear ImGui Bundle): a pinch zooms as the wheel does, and two fingers moved
+    // together pan with NavigateButtonIndex. A widget in a node that takes the pinch (an image) keeps it.
 
     // Inside a node, Dear ImGui believes that the available width is the width of the window that hosts the editor:
     // Separator(), SeparatorText(), CollapsingHeader() and TextWrapped() go far beyond the node, and sliders / input fields

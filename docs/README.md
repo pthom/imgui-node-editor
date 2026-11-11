@@ -90,6 +90,18 @@ Keyboard shortcuts only fire when `AreShortcutsEnabled()` returns `true`.
 | `Space`                        | Open the context menu at the mouse position                       |
 | `Ctrl` + `X` / `C` / `V` / `D` | Cut / Copy / Paste / Duplicate (forwarded as actions to the user) |
 
+### Touch screen (with imgui_kit)
+
+Built with imgui_kit's touch layer (`IMGUI_BUNDLE_WITH_IMGUI_KIT`, as in Dear ImGui Bundle), the editor reacts to the fingers too.
+
+| Input                                             | Action                                                                                        |
+|---------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| One finger                                        | As the left button                                                                            |
+| Pinch                                             | Zoom in or out, around the fingers (by `Config::SmoothZoomPower`, or one zoom level per step) |
+| Two fingers moved together                        | Pan the canvas (as `Config::NavigateButtonIndex`)                                             |
+| Long press                                        | A right click: the context menu                                                               |
+| Pinch on a widget of a node that zooms (an image) | Zoom that widget, not the canvas                                                              |
+
 ## Dependencies
 
  * Dear ImGui 1.80 or newer, tested up to 1.93.0 WIP

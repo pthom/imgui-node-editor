@@ -35,6 +35,7 @@ In the order of the commits:
 | Node width | `Config::ForceWindowContentWidthToNodeWidth`: separators, headers, wrapped text and default item widths use the width of the node. A node that grows at each frame, or that collapses to the width of one character, is detected and explained |
 | Links | Angled links (upstream PR 119): a link that would pass through its nodes is routed around them. Optional: `Style::AngledLinks`. The default link color follows the light / dark theme |
 | Input | `EditorContext::DisableUserInputThisFrame()`: a widget inside a node (a plot...) can keep the mouse for itself |
+| Touch (with imgui_kit) | A pinch zooms the canvas around the fingers, two fingers pan it. The canvas tells imgui_kit its zoom (`ImGuiTouch::PushClaimTransform()`), so that a widget in a node that takes the pinch gets it where it shows. Behind `IMGUI_BUNDLE_WITH_IMGUI_KIT` |
 | Tests | Automated tests, based on imgui_test_engine (chapter 5); in upstream's headless suite, tests for the popups, the pan and `EndCreate()` |
 
 
@@ -57,6 +58,8 @@ about it, which is why some widgets need help.
 | `InputTextMultiline()` | use `ed::InputTextMultiline()` | works as is |
 | `Separator()`, `SeparatorText()`, `CollapsingHeader()`, `TextWrapped()` | too wide, unless `Config::ForceWindowContentWidthToNodeWidth` is set | same |
 | `BeginChild()`, `BeginListBox()`, and any widget built on a child window | does not work | does not work, and is reported |
+
+On a touch screen (with imgui_kit), a widget in a node takes the fingers with imgui_kit's calls (`ImGuiTouch::SetItemPinchAsWheel()` and its kin), as outside a node: nothing more to do.
 
 Without the patches, a popup must be opened and submitted while the editor is suspended:
 
