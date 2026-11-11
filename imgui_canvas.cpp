@@ -300,6 +300,7 @@ Sorry, child windows are incompatible with the canvas of imgui-node-editor, and 
 ImGuiEx::Canvas::~Canvas()
 {
     ImGuiContext* g = ImGui::GetCurrentContext();
+    IM_UNUSED(g); // used only with the patched Dear ImGui's callbacks
     if (s_CanvasInLocalSpace == this)
     {
         s_CanvasInLocalSpace = nullptr;
