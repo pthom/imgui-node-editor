@@ -1953,6 +1953,23 @@ void ed::EditorContext::End()
     if (!m_IsFrozen)
         m_Canvas.End();
 
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+    // On a touch screen, two fingers that spread or close on the editor zoom the view around them, as the wheel does,
+    // and two fingers that move together pan it, as the navigate button does. Without smooth zoom, the wheel steps
+    // through the zoom levels, one level per notch. Claimed at each frame, also when nothing hovers the editor (there
+    // is no mouse between two touches), and with the background's id: a first finger that pressed it gives way.
+    if (!m_IsFrozen && m_IsCanvasVisible)
+    {
+        const ImRect& canvasRect = m_Canvas.Rect();
+        const float wheelZoom = m_Config.EnableSmoothZoom ? m_Config.SmoothZoomPower : m_NavigateAction.GetZoomLevelStep();
+        if (wheelZoom > 0.0f && wheelZoom != 1.0f)
+            ImGuiTouch::SetRectPinchAsWheel(canvasRect.Min, canvasRect.Max, wheelZoom, m_Config.EnableSmoothZoom
+                ? ImGuiTouchPinchDelivery_WheelContinuous : ImGuiTouchPinchDelivery_WheelNotches, m_BackgroundId);
+        ImGuiTouch::SetRectTwoFingerPanAsMouseDrag(canvasRect.Min, canvasRect.Max, m_Config.NavigateButtonIndex,
+            m_BackgroundId);
+    }
+# endif
+
     ImDrawList_SwapSplitter(m_DrawList, m_Splitter);
 
     // Draw border
@@ -3040,18 +3057,6 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
     auto backgroundDoubleClickButtonIndex = isMouseDoubleClickOverBackground();
     auto isBackgroundActive               = ImGui::IsItemActive();
     m_BackgroundId = ImGui::GetItemID();
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
-    // On a touch screen, two fingers that spread or close on the background zoom the view around them, as the wheel
-    // does, and two fingers that move together pan it, as the navigate button does. Without smooth zoom, the wheel
-    // steps through the zoom levels, one level per notch.
-    {
-        const float wheelZoom = m_Config.EnableSmoothZoom ? m_Config.SmoothZoomPower : m_NavigateAction.GetZoomLevelStep();
-        if (wheelZoom > 0.0f && wheelZoom != 1.0f)
-            ImGuiTouch::SetItemPinchAsWheel(wheelZoom, m_Config.EnableSmoothZoom
-                ? ImGuiTouchPinchDelivery_WheelContinuous : ImGuiTouchPinchDelivery_WheelNotches);
-        ImGuiTouch::SetItemTwoFingerPanAsMouseDrag(m_Config.NavigateButtonIndex);
-    }
-# endif
 
 # if IMGUI_VERSION_NUM >= 19070
     // A press of the navigate button inside the editor that no item takes (on a widget of a node which does not use
