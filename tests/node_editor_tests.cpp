@@ -9,8 +9,17 @@
 # include "imgui_test_engine/imgui_te_context.h"
 # include <map>
 # include <string>
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+#     include "imgui_kit/imgui_kit.h" // the touch tests: ImGuiTouch::AddFingerEvent
+# endif
 
 namespace ed = ax::NodeEditor;
+
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+static const int gNodeCount = 11;   // the last one holds a zoomable image (see ShowImageNode())
+# else
+static const int gNodeCount = 10;
+# endif
 
 // Draw callback that the canvas uses as a marker inside the draw list (same value as in imgui_canvas.cpp)
 # ifndef ImDrawCallback_ImCanvas
@@ -70,6 +79,10 @@ struct Scene
     ImVec2 MouseInCreate;              // ImGui::GetMousePos() in the create action, after the query
     ImVec2 MouseOnCanvasInCreate;      // ed::GetMousePosOnCanvas() at the same place
     ImVec2 MouseOutsideCreate;         // ImGui::GetMousePos() between ed::Begin() and ed::End(), outside of the create action
+
+    // The image inside a node: its zoom by the wheel, its pan by a left drag (in canvas units)
+    float  ImageZoom = 1.0f;
+    ImVec2 ImagePan;
 };
 static Scene gScene;
 
@@ -304,6 +317,28 @@ static void ShowOverlappingNodes()
     ed::EndNode();
 }
 
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+// An image that zooms with the wheel and pans with a left drag, as ImmVision's. On a touch screen, it claims the pinch
+// and the two-finger pan (imgui_kit): inside the canvas, where it shows, also when the view is zoomed or panned.
+static void ShowImageNode()
+{
+    const float em = ImGui::GetFontSize();
+
+    ed::BeginNode(ed::NodeId(11));
+    ImGui::TextUnformatted("image");
+    ImGui::InvisibleButton("image", ImVec2(em * 8.0f, em * 6.0f));
+    ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(60, 90, 140, 255));
+    ImGuiTouch::SetItemPinchAsWheel(1.25f, ImGuiTouchPinchDelivery_WheelContinuous);
+    ImGuiTouch::SetItemTwoFingerPanAsMouseDrag(ImGuiMouseButton_Left);
+    if (ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY) && ImGui::IsItemHovered() && ImGui::GetIO().MouseWheel != 0.0f)
+        gScene.ImageZoom *= ImPow(1.25f, ImGui::GetIO().MouseWheel);
+    if (ImGui::IsItemActive())
+        gScene.ImagePan += ImGui::GetIO().MouseDelta;
+    RecordLastItem("image");
+    ed::EndNode();
+}
+# endif
+
 // Inspect the draw commands that the editor added to the draw list of the window (call right after ed::End())
 static void InspectDrawList(int first_cmd)
 {
@@ -463,6 +498,7 @@ void NodeEditorTests_ShowGui()
             ed::SetNodePosition(ed::NodeId(8), ImVec2(em * 40.0f, em * 10.0f));
             ed::SetNodePosition(ed::NodeId(9), ImVec2(em * 40.0f, em * 20.0f));
             ed::SetNodePosition(ed::NodeId(10), ImVec2(em * 41.0f, em * 20.5f));
+            ed::SetNodePosition(ed::NodeId(11), ImVec2(em * 2.0f, em * 36.0f));
         }
         if (gScene.MoveWidgetsNodeRequest)
         {
@@ -477,10 +513,13 @@ void NodeEditorTests_ShowGui()
         ShowPinsNode();
         ShowChannelsNode();
         ShowOverlappingNodes();
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+        ShowImageNode();
+# endif
         ShowContextMenus();
         HandleCreation();
         gScene.NodeRects.clear();
-        for (int node_id = 1; node_id <= 10; node_id++)
+        for (int node_id = 1; node_id <= gNodeCount; node_id++)
         {
             const ImVec2 node_pos = ed::GetNodePosition(ed::NodeId(node_id));
             gScene.NodeRects.push_back(ImRect(ed::CanvasToScreen(node_pos), ed::CanvasToScreen(node_pos + ed::GetNodeSize(ed::NodeId(node_id)))));
@@ -700,6 +739,71 @@ static void RunInAllViews(ImGuiTestContext* ctx, ViewCheck check)
     ctx->PopupCloseAll();
     CheckDrawList(ctx);
 }
+
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+// The touch tests run with ImGuiTestRunFlags_EnableRawInputs: the test is the platform of a phone. The test engine removes
+// the input events it did not add, so the test marks its own as the engine's.
+static void MarkNewInputEvents(int queue_size_before)
+{
+    ImGuiContext& g = *GImGui;
+    for (int n = queue_size_before; n < g.InputEventsQueue.Size; n++)
+        g.InputEventsQueue[n].AddedByTestEngine = true;
+}
+
+// Two fingers land, one after the other. Dear ImGui sees the first one as the mouse (from a touch screen), imgui_kit sees both.
+static void TouchTwoFingersDown(ImGuiTestContext* ctx, ImVec2 a, ImVec2 b)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    const int before = GImGui->InputEventsQueue.Size;
+    io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+    io.AddMousePosEvent(a.x, a.y);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    MarkNewInputEvents(before);
+    ImGuiTouch::AddFingerEvent(1, a, ImGuiTouchPhase_Began);
+    ctx->Yield(2);
+    ImGuiTouch::AddFingerEvent(2, b, ImGuiTouchPhase_Began);
+    ctx->Yield(2);
+}
+
+// The fingers move from (a0, b0) to (a1, b1), in `steps` frames. While two fingers are down, imgui_kit moves the mouse
+// to their center: the first finger's moves are not sent.
+static void TouchTwoFingersMove(ImGuiTestContext* ctx, ImVec2 a0, ImVec2 b0, ImVec2 a1, ImVec2 b1, int steps)
+{
+    for (int i = 1; i <= steps; i++)
+    {
+        const float t = static_cast<float>(i) / static_cast<float>(steps);
+        ImGuiTouch::AddFingerEvent(1, ImLerp(a0, a1, t), ImGuiTouchPhase_Moved);
+        ImGuiTouch::AddFingerEvent(2, ImLerp(b0, b1, t), ImGuiTouchPhase_Moved);
+        ctx->Yield();
+    }
+}
+
+// The fingers lift: the mouse button too, and the mouse source is a mouse again
+static void TouchTwoFingersUp(ImGuiTestContext* ctx, ImVec2 a, ImVec2 b)
+{
+    ImGuiTouch::AddFingerEvent(1, a, ImGuiTouchPhase_Ended);
+    ImGuiTouch::AddFingerEvent(2, b, ImGuiTouchPhase_Ended);
+    ImGuiIO& io = ImGui::GetIO();
+    const int before = GImGui->InputEventsQueue.Size;
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
+    MarkNewInputEvents(before);
+    ctx->Yield(3);
+}
+
+// The zoom is animated: wait until it did not change for 4 frames (bounded in time, as in SetZoom())
+static void WaitForStableZoom(ImGuiTestContext* ctx)
+{
+    const double start_time = ImGui::GetTime();
+    float previous_zoom = -1.0f;
+    for (int stable_frames = 0; stable_frames < 4 && ImGui::GetTime() - start_time < 3.0; )
+    {
+        stable_frames = (previous_zoom == gScene.Zoom) ? stable_frames + 1 : 0;
+        previous_zoom = gScene.Zoom;
+        ctx->Yield();
+    }
+}
+# endif
 
 //------------------------------------------------------------------------------
 // Tests
@@ -1264,4 +1368,90 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
             IM_CHECK_LT(ImAbs(moved.y - delta.y), 2.0f);
         }
     };
+
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+    // ## On a touch screen, two fingers that spread on the background zoom the view around them, and not the font
+    t = IM_REGISTER_TEST(engine, "node_editor", "touch_pinch_zooms_the_view");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        ResetScene(ctx);
+        ctx->RunFlags |= ImGuiTestRunFlags_EnableRawInputs;
+        const float em = ImGui::GetFontSize();
+        const float font_scale = ImGui::GetStyle().FontScaleMain;
+        ImVec2 center;
+        IM_CHECK(FindEmptySpot(&center));
+        const ImVec2 anchor_before = gScene.ZoomAnchor;
+        // 2.25 times as far apart: one wheel notch, the next zoom level (twice the zoom, in this scene)
+        const ImVec2 a0 = center - ImVec2(em * 2.0f, 0.0f), b0 = center + ImVec2(em * 2.0f, 0.0f);
+        const ImVec2 a1 = center - ImVec2(em * 4.5f, 0.0f), b1 = center + ImVec2(em * 4.5f, 0.0f);
+        TouchTwoFingersDown(ctx, a0, b0);
+        TouchTwoFingersMove(ctx, a0, b0, a1, b1, 8);
+        WaitForStableZoom(ctx);
+        const ImVec2 expected_anchor = center + (anchor_before - center) * 2.0f;  // what was under the fingers stays there
+        ctx->LogInfo("zoom %.2f, font scale %.2f; anchor (%.0f, %.0f), expected (%.0f, %.0f)", gScene.Zoom,
+                     ImGui::GetStyle().FontScaleMain, gScene.ZoomAnchor.x, gScene.ZoomAnchor.y, expected_anchor.x, expected_anchor.y);
+        IM_CHECK_EQ(ImGui::GetStyle().FontScaleMain, font_scale);
+        IM_CHECK_LT(ImAbs(gScene.Zoom - 2.0f), 0.01f);
+        IM_CHECK_LT(ImLengthSqr(gScene.ZoomAnchor - expected_anchor), 4.0f);
+        TouchTwoFingersUp(ctx, a1, b1);
+        ctx->RunFlags &= ~ImGuiTestRunFlags_EnableRawInputs;
+    };
+
+    // ## On a touch screen, a pinch on an image inside a node zooms the image, not the view. The view is zoomed out and
+    //    panned: the image claims the fingers where it shows.
+    t = IM_REGISTER_TEST(engine, "node_editor", "touch_pinch_on_an_image_in_a_node");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        ResetScene(ctx);
+        SetZoom(ctx, 0.5f);
+        BringIntoView(ctx, "image");
+        ctx->RunFlags |= ImGuiTestRunFlags_EnableRawInputs;
+        const float em = ImGui::GetFontSize();
+        const float font_scale = ImGui::GetStyle().FontScaleMain;
+        gScene.ImageZoom = 1.0f;
+        const ImRect image = gScene.ItemRects["image"];
+        const ImVec2 center = image.GetCenter();
+        // 1.5 times as far apart, inside the image (4 x 3 em on the screen)
+        const ImVec2 a0 = center - ImVec2(em * 0.8f, 0.0f), b0 = center + ImVec2(em * 0.8f, 0.0f);
+        const ImVec2 a1 = center - ImVec2(em * 1.2f, 0.0f), b1 = center + ImVec2(em * 1.2f, 0.0f);
+        TouchTwoFingersDown(ctx, a0, b0);
+        TouchTwoFingersMove(ctx, a0, b0, a1, b1, 8);
+        ctx->Yield(4);
+        ctx->LogInfo("the image at (%.0f, %.0f)-(%.0f, %.0f): its zoom %.2f; the view's zoom %.2f, font scale %.2f", image.Min.x,
+                     image.Min.y, image.Max.x, image.Max.y, gScene.ImageZoom, gScene.Zoom, ImGui::GetStyle().FontScaleMain);
+        // The pinch zooms from where it was recognized (imgui_kit: a 12% spread), so a little less than 1.5
+        IM_CHECK_GT(gScene.ImageZoom, 1.25f);
+        IM_CHECK_LT(gScene.ImageZoom, 1.55f);
+        IM_CHECK_LT(ImAbs(gScene.Zoom - 0.5f), 0.01f);
+        IM_CHECK_EQ(ImGui::GetStyle().FontScaleMain, font_scale);
+        TouchTwoFingersUp(ctx, a1, b1);
+        ctx->RunFlags &= ~ImGuiTestRunFlags_EnableRawInputs;
+    };
+
+    // ## On a touch screen, two fingers that move together on the background pan the view, as the navigate button does
+    t = IM_REGISTER_TEST(engine, "node_editor", "touch_two_finger_pan");
+    t->TestFunc = [](ImGuiTestContext* ctx)
+    {
+        ResetScene(ctx);
+        ctx->RunFlags |= ImGuiTestRunFlags_EnableRawInputs;
+        const float em = ImGui::GetFontSize();
+        ImVec2 center;
+        IM_CHECK(FindEmptySpot(&center));
+        const ImVec2 anchor_before = gScene.ZoomAnchor;
+        const ImVec2 a0 = center - ImVec2(em * 2.0f, 0.0f), b0 = center + ImVec2(em * 2.0f, 0.0f);
+        const ImVec2 delta(-em * 6.0f, -em * 4.0f);
+        TouchTwoFingersDown(ctx, a0, b0);
+        TouchTwoFingersMove(ctx, a0, b0, a0 + delta, b0 + delta, 12);
+        ctx->Yield(2);
+        const ImVec2 moved = gScene.ZoomAnchor - anchor_before;
+        ctx->LogInfo("the view moved by (%.0f, %.0f), the fingers by (%.0f, %.0f); zoom %.2f", moved.x, moved.y, delta.x, delta.y,
+                     gScene.Zoom);
+        // The pan starts once the fingers moved a little, and the mouse follows their center by half a line
+        IM_CHECK_LT(ImAbs(moved.x - delta.x), em * 1.5f);
+        IM_CHECK_LT(ImAbs(moved.y - delta.y), em * 1.5f);
+        IM_CHECK_LT(ImAbs(gScene.Zoom - 1.0f), 0.01f);
+        TouchTwoFingersUp(ctx, a0 + delta, b0 + delta);
+        ctx->RunFlags &= ~ImGuiTestRunFlags_EnableRawInputs;
+    };
+# endif
 }

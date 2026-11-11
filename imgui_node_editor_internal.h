@@ -907,6 +907,9 @@ struct NavigateAction final: EditorAction
 
     void ClampZoom();
 
+    // The mean factor from a zoom level to the next: the zoom of one wheel step, without smooth zoom
+    float GetZoomLevelStep() const;
+
 private:
     ImGuiEx::Canvas&   m_Canvas;
     ImVec2             m_WindowScreenPos;

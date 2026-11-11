@@ -8,6 +8,9 @@
 //   Written by Michal Cichon
 //------------------------------------------------------------------------------
 # include "imgui_node_editor_internal.h"
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+#     include "imgui_kit/imgui_kit.h" // ImGuiTouch::SetItemPinchAsWheel
+# endif
 # include <cstdio> // snprintf
 # include <string>
 # include <fstream>
@@ -3037,6 +3040,18 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
     auto backgroundDoubleClickButtonIndex = isMouseDoubleClickOverBackground();
     auto isBackgroundActive               = ImGui::IsItemActive();
     m_BackgroundId = ImGui::GetItemID();
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+    // On a touch screen, two fingers that spread or close on the background zoom the view around them, as the wheel
+    // does, and two fingers that move together pan it, as the navigate button does. Without smooth zoom, the wheel
+    // steps through the zoom levels, one level per notch.
+    {
+        const float wheelZoom = m_Config.EnableSmoothZoom ? m_Config.SmoothZoomPower : m_NavigateAction.GetZoomLevelStep();
+        if (wheelZoom > 0.0f && wheelZoom != 1.0f)
+            ImGuiTouch::SetItemPinchAsWheel(wheelZoom, m_Config.EnableSmoothZoom
+                ? ImGuiTouchPinchDelivery_WheelContinuous : ImGuiTouchPinchDelivery_WheelNotches);
+        ImGuiTouch::SetItemTwoFingerPanAsMouseDrag(m_Config.NavigateButtonIndex);
+    }
+# endif
 
 # if IMGUI_VERSION_NUM >= 19070
     // A press of the navigate button inside the editor that no item takes (on a widget of a node which does not use
@@ -4207,6 +4222,13 @@ void ed::NavigateAction::ClampZoom()
     const auto center   = (m_Scroll + halfSize) / m_Zoom;
     m_Scroll = center * zoom - halfSize;
     m_Zoom   = zoom;
+}
+
+float ed::NavigateAction::GetZoomLevelStep() const
+{
+    if (m_ZoomLevelCount < 2)
+        return 1.0f;
+    return powf(m_ZoomLevels[m_ZoomLevelCount - 1] / m_ZoomLevels[0], 1.0f / static_cast<float>(m_ZoomLevelCount - 1));
 }
 
 float ed::NavigateAction::GetNextZoom(float steps)
