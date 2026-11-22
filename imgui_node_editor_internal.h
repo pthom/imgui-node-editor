@@ -922,8 +922,9 @@ private:
     bool               m_MovingOverEdge;
     ImVec2             m_MoveScreenOffset;
 
-    const float*       m_ZoomLevels;
-    int                m_ZoomLevelCount;
+    // The zoom levels: Config::CustomZoomLevels, or the default ones. Read from the editor's config at each use.
+    const float* ZoomLevels() const;
+    int          ZoomLevelCount() const;
 
     bool HandleZoom(const Control& control);
 

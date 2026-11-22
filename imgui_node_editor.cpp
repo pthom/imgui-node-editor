@@ -3897,10 +3897,20 @@ ed::NavigateAction::NavigateAction(EditorContext* editor, ImGuiEx::Canvas& canva
     m_LastSelectionId(0),
     m_LastObject(nullptr),
     m_MovingOverEdge(false),
-    m_MoveScreenOffset(0, 0),
-    m_ZoomLevels(editor->GetConfig().CustomZoomLevels.Size > 0 ? editor->GetConfig().CustomZoomLevels.Data : s_DefaultZoomLevels),
-    m_ZoomLevelCount(editor->GetConfig().CustomZoomLevels.Size > 0 ? editor->GetConfig().CustomZoomLevels.Size : s_DefaultZoomLevelCount)
+    m_MoveScreenOffset(0, 0)
 {
+}
+
+const float* ed::NavigateAction::ZoomLevels() const
+{
+    const auto& levels = Editor->GetConfig().CustomZoomLevels;
+    return levels.Size > 0 ? levels.Data : s_DefaultZoomLevels;
+}
+
+int ed::NavigateAction::ZoomLevelCount() const
+{
+    const auto& levels = Editor->GetConfig().CustomZoomLevels;
+    return levels.Size > 0 ? levels.Size : s_DefaultZoomLevelCount;
 }
 
 ed::EditorAction::AcceptResult ed::NavigateAction::Accept(const Control& control)
@@ -4219,7 +4229,7 @@ ImRect ed::NavigateAction::GetViewRect() const
 
 void ed::NavigateAction::ClampZoom()
 {
-    const auto zoom = ImClamp(m_Zoom, m_ZoomLevels[0], m_ZoomLevels[m_ZoomLevelCount - 1]);
+    const auto zoom = ImClamp(m_Zoom, ZoomLevels()[0], ZoomLevels()[ZoomLevelCount() - 1]);
     if (zoom == m_Zoom)
         return;
 
@@ -4231,9 +4241,9 @@ void ed::NavigateAction::ClampZoom()
 
 float ed::NavigateAction::GetZoomLevelStep() const
 {
-    if (m_ZoomLevelCount < 2)
+    if (ZoomLevelCount() < 2)
         return 1.0f;
-    return powf(m_ZoomLevels[m_ZoomLevelCount - 1] / m_ZoomLevels[0], 1.0f / static_cast<float>(m_ZoomLevelCount - 1));
+    return powf(ZoomLevels()[ZoomLevelCount() - 1] / ZoomLevels()[0], 1.0f / static_cast<float>(ZoomLevelCount() - 1));
 }
 
 float ed::NavigateAction::GetNextZoom(float steps)
@@ -4245,7 +4255,7 @@ float ed::NavigateAction::GetNextZoom(float steps)
     else
     {
         auto fixedSteps = (int)steps;
-        return MatchZoom(fixedSteps, m_ZoomLevels[fixedSteps < 0 ? 0 : m_ZoomLevelCount - 1]);
+        return MatchZoom(fixedSteps, ZoomLevels()[fixedSteps < 0 ? 0 : ZoomLevelCount() - 1]);
     }
 }
 
@@ -4254,10 +4264,10 @@ float ed::NavigateAction::MatchSmoothZoom(float steps)
     const auto power = Editor->GetConfig().SmoothZoomPower;
 
     const auto newZoom = m_Zoom * powf(power, steps);
-    if (newZoom < m_ZoomLevels[0])
-        return m_ZoomLevels[0];
-    else if (newZoom > m_ZoomLevels[m_ZoomLevelCount - 1])
-        return m_ZoomLevels[m_ZoomLevelCount - 1];
+    if (newZoom < ZoomLevels()[0])
+        return ZoomLevels()[0];
+    else if (newZoom > ZoomLevels()[ZoomLevelCount() - 1])
+        return ZoomLevels()[ZoomLevelCount() - 1];
     else
         return newZoom;
 }
@@ -4268,13 +4278,13 @@ float ed::NavigateAction::MatchZoom(int steps, float fallbackZoom)
     if (currentZoomIndex < 0)
         return fallbackZoom;
 
-    auto currentZoom = m_ZoomLevels[currentZoomIndex];
+    auto currentZoom = ZoomLevels()[currentZoomIndex];
     if (fabsf(currentZoom - m_Zoom) > 0.001f)
         return currentZoom;
 
     auto newIndex = currentZoomIndex + steps;
-    if (newIndex >= 0 && newIndex < m_ZoomLevelCount)
-        return m_ZoomLevels[newIndex];
+    if (newIndex >= 0 && newIndex < ZoomLevelCount())
+        return ZoomLevels()[newIndex];
     else
         return fallbackZoom;
 }
@@ -4284,9 +4294,9 @@ int ed::NavigateAction::MatchZoomIndex(int direction)
     int   bestIndex    = -1;
     float bestDistance = 0.0f;
 
-    for (int i = 0; i < m_ZoomLevelCount; ++i)
+    for (int i = 0; i < ZoomLevelCount(); ++i)
     {
-        auto distance = fabsf(m_ZoomLevels[i] - m_Zoom);
+        auto distance = fabsf(ZoomLevels()[i] - m_Zoom);
         if (distance < bestDistance || bestIndex < 0)
         {
             bestDistance = distance;
@@ -4300,8 +4310,8 @@ int ed::NavigateAction::MatchZoomIndex(int direction)
         {
             ++bestIndex;
 
-            if (bestIndex >= m_ZoomLevelCount)
-                bestIndex = m_ZoomLevelCount - 1;
+            if (bestIndex >= ZoomLevelCount())
+                bestIndex = ZoomLevelCount() - 1;
         }
         else if (direction < 0)
         {
