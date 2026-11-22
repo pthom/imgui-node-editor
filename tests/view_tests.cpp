@@ -100,3 +100,28 @@ TEST_CASE(ZoomLevelsChangedAfterCreation, "view.zoom_levels_changed_after_creati
     const float zoom = WheelStep(session, 1.0f);
     test::Check(std::fabs(zoom - 4.0f) < 0.01f, "one wheel step goes to the new level 4: %g", zoom);
 }
+
+TEST_CASE(WheelZoomLandsOnItsLevel, "view.wheel_zoom_lands_on_its_level", "CORE-20", test::TestFlags_None)
+{
+    // The wheel's animation ends on a rectangle; the scale computed from it was off by a few ulps (1.2499999).
+    {
+        test::Session session(SteppedZoomConfig({}));
+        HoverEditor(session);
+        for (float level : { 1.25f, 1.5f, 2.0f })
+        {
+            const float zoom = WheelStep(session, 1.0f);
+            test::Check(zoom == level, "default levels: one wheel step lands on %g exactly: %.9g", level, zoom);
+        }
+    }
+    {
+        test::Session session(SteppedZoomConfig({ 1.0f, 2.0f, 3.0f, 4.0f }));
+        HoverEditor(session);
+        for (float level : { 2.0f, 3.0f, 4.0f })
+        {
+            const float zoom = WheelStep(session, 1.0f);
+            test::Check(zoom == level, "custom levels: one wheel step lands on %g exactly: %.9g", level, zoom);
+        }
+        const float zoom = WheelStep(session, -1.0f);
+        test::Check(zoom == 3.0f, "custom levels: one wheel step back lands on 3 exactly: %.9g", zoom);
+    }
+}

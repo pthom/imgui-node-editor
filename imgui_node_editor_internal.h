@@ -722,10 +722,11 @@ struct NavigateAnimation final: Animation
     NavigateAction& Action;
     ImRect      m_Start;
     ImRect      m_Target;
+    float       m_TargetZoom = 0.0f; // > 0: the exact scale at the end (a wheel step's zoom level)
 
     NavigateAnimation(EditorContext* editor, NavigateAction& scrollAction);
 
-    void NavigateTo(const ImRect& target, float duration);
+    void NavigateTo(const ImRect& target, float duration, float targetZoom = 0.0f);
 
 private:
     void OnUpdate(float progress) override final;
@@ -907,6 +908,9 @@ struct NavigateAction final: EditorAction
 
     void ClampZoom();
 
+    // Sets the scale; the canvas point at the view's center stays there
+    void SetZoomAroundCenter(float zoom);
+
     // The mean factor from a zoom level to the next: the zoom of one wheel step, without smooth zoom
     float GetZoomLevelStep() const;
 
@@ -928,7 +932,7 @@ private:
 
     bool HandleZoom(const Control& control);
 
-    void NavigateTo(const ImRect& target, float duration = -1.0f, NavigationReason reason = NavigationReason::Unknown);
+    void NavigateTo(const ImRect& target, float duration = -1.0f, NavigationReason reason = NavigationReason::Unknown, float targetZoom = 0.0f);
 
     float GetNextZoom(float steps);
     float MatchSmoothZoom(float steps);
