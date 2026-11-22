@@ -125,3 +125,38 @@ TEST_CASE(WheelZoomLandsOnItsLevel, "view.wheel_zoom_lands_on_its_level", "CORE-
         test::Check(zoom == 3.0f, "custom levels: one wheel step back lands on 3 exactly: %.9g", zoom);
     }
 }
+
+TEST_CASE(SetZoom, "view.set_zoom", "CORE-21", test::TestFlags_None)
+{
+    test::Session session(SteppedZoomConfig({}));
+    HoverEditor(session);
+
+    // A node centered in the view stays there on screen
+    session.Use([] { ed::NavigateToContent(0.0f); });
+    session.Run(2);
+    auto nodeCenter = []
+    {
+        return ed::CanvasToScreen(ed::GetNodePosition(1) + ed::GetNodeSize(1) * 0.5f);
+    };
+    const ImVec2 before = session.Use(nodeCenter);
+    session.Use([] { ed::SetZoom(3.0f); });
+    session.Run(2);
+    const float zoom = session.Use([] { return ed::GetZoom(); });
+    const ImVec2 after = session.Use(nodeCenter);
+    test::Check(zoom == 3.0f, "SetZoom(3): GetZoom() is 3 exactly: %.9g", zoom);
+    test::Check(std::fabs(zoom * session.Use([] { return ed::GetCurrentZoom(); }) - 1.0f) < 1e-6f,
+        "GetCurrentZoom() is its inverse");
+    // The view's origin is on whole pixels: the node may move by up to one pixel on each axis.
+    test::Check(std::fabs(after.x - before.x) <= 1.0f && std::fabs(after.y - before.y) <= 1.0f,
+        "the centered node stays on screen: (%g, %g) -> (%g, %g)", before.x, before.y, after.x, after.y);
+
+    // During a navigation: the navigation ends, the scale stays
+    session.Use([] { ed::NavigateToContent(1.0f); });
+    session.Run(2);
+    test::Check(session.Use([] { return ed::IsNavigating(); }), "NavigateToContent(1 s): IsNavigating()");
+    session.Use([] { ed::SetZoom(2.0f); });
+    test::Check(!session.Use([] { return ed::IsNavigating(); }), "SetZoom() ends the navigation");
+    session.Run(30);
+    const float settled = session.Use([] { return ed::GetZoom(); });
+    test::Check(settled == 2.0f, "the scale stays 2 after the navigation's time: %.9g", settled);
+}

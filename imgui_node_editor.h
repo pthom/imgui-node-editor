@@ -726,6 +726,12 @@ IMGUI_NODE_EDITOR_API void EndShortcut(); // Ends the shortcut action (harmless 
 // 1.0 at 100%, 2.0 when the content is drawn at half size (zoomed out), 0.5 when it is drawn twice as big (zoomed in).
 // To convert positions, use ScreenToCanvas() / CanvasToScreen().
 IMGUI_NODE_EDITOR_API float GetCurrentZoom();
+// The view's scale, as Config::CustomZoomLevels: 2.0 draws the content twice as big (the inverse of GetCurrentZoom()).
+IMGUI_NODE_EDITOR_API float GetZoom();
+// Sets the view's scale at once, around the view's center (e.g. to snap to a zoom level). A running navigation ends first.
+IMGUI_NODE_EDITOR_API void  SetZoom(float zoom);
+// True while the view animates: a wheel zoom, NavigateToContent(), NavigateToSelection(), the F key.
+IMGUI_NODE_EDITOR_API bool  IsNavigating();
 
 // --- Input queries (call between Begin and End) ---------------------------
 // These return the object under the mouse this frame (NodeId/PinId/LinkId,

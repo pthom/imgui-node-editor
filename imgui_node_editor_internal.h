@@ -911,6 +911,10 @@ struct NavigateAction final: EditorAction
     // Sets the scale; the canvas point at the view's center stays there
     void SetZoomAroundCenter(float zoom);
 
+    // SetZoom() of the API: a running navigation reaches its target first
+    void SetZoom(float zoom);
+    bool IsNavigating() const { return m_Animation.IsPlaying(); }
+
     // The mean factor from a zoom level to the next: the zoom of one wheel step, without smooth zoom
     float GetZoomLevelStep() const;
 
@@ -1517,6 +1521,9 @@ struct EditorContext
         auto zoomMode = zoomIn ? NavigateAction::ZoomMode::WithMargin : NavigateAction::ZoomMode::None;
         m_NavigateAction.NavigateTo(bounds, zoomMode, duration);
     }
+
+    void SetZoom(float zoom) { m_NavigateAction.SetZoom(zoom); }
+    bool IsNavigating() const { return m_NavigateAction.IsNavigating(); }
 
     void RegisterAnimation(Animation* animation);
     void UnregisterAnimation(Animation* animation);

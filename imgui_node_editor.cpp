@@ -4239,6 +4239,16 @@ void ed::NavigateAction::ClampZoom()
     SetZoomAroundCenter(zoom);
 }
 
+void ed::NavigateAction::SetZoom(float zoom)
+{
+    IM_ASSERT(zoom > 0.0f && "The zoom must be positive.");
+    if (!(zoom > 0.0f))
+        return;
+
+    m_Animation.Finish();
+    SetZoomAroundCenter(zoom);
+}
+
 void ed::NavigateAction::SetZoomAroundCenter(float zoom)
 {
     const auto halfSize = m_Canvas.Rect().GetSize() * 0.5f;
