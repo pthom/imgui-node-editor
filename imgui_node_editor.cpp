@@ -8,8 +8,8 @@
 //   Written by Michal Cichon
 //------------------------------------------------------------------------------
 # include "imgui_node_editor_internal.h"
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
-#     include "imgui_kit/imgui_kit.h" // ImGuiTouch::SetItemPinchAsWheel
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
+#     include "imgui_touch/imgui_touch.h" // ImGuiTouch::SetItemPinchAsWheel
 # endif
 # include <cstdio> // snprintf
 # include <string>
@@ -1953,7 +1953,7 @@ void ed::EditorContext::End()
     if (!m_IsFrozen)
         m_Canvas.End();
 
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
     // On a touch screen, two fingers that spread or close on the editor zoom the view around them, as the wheel does,
     // and two fingers that move together pan it, as the navigate button does. Without smooth zoom, the wheel steps
     // through the zoom levels, one level per notch. Claimed at each frame, also when nothing hovers the editor (there

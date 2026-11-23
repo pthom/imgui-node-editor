@@ -4,8 +4,8 @@
 # include "imgui_canvas.h"
 # include <cmath>
 # include <type_traits>
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
-#     include "imgui_kit/imgui_kit.h" // ImGuiTouch::PushClaimTransform
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
+#     include "imgui_touch/imgui_touch.h" // ImGuiTouch::PushClaimTransform
 # endif
 
 // https://stackoverflow.com/a/36079786
@@ -748,7 +748,7 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     // Inside the canvas, ImGui::InputTextMultiline() is replaced by a version that does not use a child window
     ImGui::GetCurrentContext()->InputTextMultilineOverride = &ImGuiEx::CanvasInputTextMultiline;
 # endif
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
     // On a touch screen, the widgets inside claim the fingers where they show (a zoomable image takes the pinch)
     ImGuiTouch::PushClaimTransform(m_View.Scale(), m_ViewTransformPosition);
 # endif
@@ -761,7 +761,7 @@ void ImGuiEx::Canvas::LeaveLocalSpace()
     IM_ASSERT(ImGui::GetCurrentWindow() == m_Window && "Canvas suspended or ended in another window than it began in.");
     IM_ASSERT(m_DrawList->_ClipRectStack.Size >= m_ClipRectStackSize && "Canvas clip rectangle was popped inside the canvas.");
 
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
     ImGuiTouch::PopClaimTransform();
 # endif
 

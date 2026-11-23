@@ -9,13 +9,13 @@
 # include "imgui_test_engine/imgui_te_context.h"
 # include <map>
 # include <string>
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
-#     include "imgui_kit/imgui_kit.h" // the touch tests: ImGuiTouch::AddFingerEvent
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
+#     include "imgui_touch/imgui_touch.h" // the touch tests: ImGuiTouch::AddFingerEvent
 # endif
 
 namespace ed = ax::NodeEditor;
 
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
 static const int gNodeCount = 11;   // the last one holds a zoomable image (see ShowImageNode())
 # else
 static const int gNodeCount = 10;
@@ -317,9 +317,9 @@ static void ShowOverlappingNodes()
     ed::EndNode();
 }
 
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
 // An image that zooms with the wheel and pans with a left drag, as ImmVision's. On a touch screen, it claims the pinch
-// and the two-finger pan (imgui_kit): inside the canvas, where it shows, also when the view is zoomed or panned.
+// and the two-finger pan (imgui_touch): inside the canvas, where it shows, also when the view is zoomed or panned.
 static void ShowImageNode()
 {
     const float em = ImGui::GetFontSize();
@@ -513,7 +513,7 @@ void NodeEditorTests_ShowGui()
         ShowPinsNode();
         ShowChannelsNode();
         ShowOverlappingNodes();
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
         ShowImageNode();
 # endif
         ShowContextMenus();
@@ -740,7 +740,7 @@ static void RunInAllViews(ImGuiTestContext* ctx, ViewCheck check)
     CheckDrawList(ctx);
 }
 
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
 // The touch tests run with ImGuiTestRunFlags_EnableRawInputs: the test is the platform of a phone. The test engine removes
 // the input events it did not add, so the test marks its own as the engine's.
 static void MarkNewInputEvents(int queue_size_before)
@@ -750,7 +750,7 @@ static void MarkNewInputEvents(int queue_size_before)
         g.InputEventsQueue[n].AddedByTestEngine = true;
 }
 
-// Two fingers land, one after the other. Dear ImGui sees the first one as the mouse (from a touch screen), imgui_kit sees both.
+// Two fingers land, one after the other. Dear ImGui sees the first one as the mouse (from a touch screen), imgui_touch sees both.
 // together: they land in the same frame, after a time with no mouse at all (as between two touches): then a browser
 // reports no mouse press. The fingers of a test that failed before lifting them are lifted first.
 static void TouchTwoFingersDown(ImGuiTestContext* ctx, ImVec2 a, ImVec2 b, bool together = false)
@@ -778,8 +778,8 @@ static void TouchTwoFingersDown(ImGuiTestContext* ctx, ImVec2 a, ImVec2 b, bool 
     ctx->Yield(2);
 }
 
-// The fingers move from (a0, b0) to (a1, b1), in `steps` frames. While two fingers are down, imgui_kit moves the mouse
-// to their center: the first finger's moves are not sent. The test moves it there too: imgui_kit rewrites the
+// The fingers move from (a0, b0) to (a1, b1), in `steps` frames. While two fingers are down, imgui_touch moves the mouse
+// to their center: the first finger's moves are not sent. The test moves it there too: imgui_touch rewrites the
 // backend's own mouse events (the real cursor's, over the window), which the test engine then removes.
 static void TouchTwoFingersMove(ImGuiTestContext* ctx, ImVec2 a0, ImVec2 b0, ImVec2 a1, ImVec2 b1, int steps)
 {
@@ -1387,7 +1387,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
         }
     };
 
-# if defined(IMGUI_BUNDLE_WITH_IMGUI_KIT)
+# if defined(IMGUI_BUNDLE_WITH_IMGUI_TOUCH)
     // ## On a touch screen, two fingers that spread on the background zoom the view around them, and not the font: when they
     //    land one after the other, and when they land together after a time with no mouse (as between two touches)
     t = IM_REGISTER_TEST(engine, "node_editor", "touch_pinch_zooms_the_view");
@@ -1441,7 +1441,7 @@ void NodeEditorTests_Register(ImGuiTestEngine* engine)
         ctx->Yield(4);
         ctx->LogInfo("the image at (%.0f, %.0f)-(%.0f, %.0f): its zoom %.2f; the view's zoom %.2f, font scale %.2f", image.Min.x,
                      image.Min.y, image.Max.x, image.Max.y, gScene.ImageZoom, gScene.Zoom, ImGui::GetStyle().FontScaleMain);
-        // The pinch zooms from where it was recognized (imgui_kit: a 12% spread), so a little less than 1.5
+        // The pinch zooms from where it was recognized (imgui_touch: a 12% spread), so a little less than 1.5
         IM_CHECK_GT(gScene.ImageZoom, 1.25f);
         IM_CHECK_LT(gScene.ImageZoom, 1.55f);
         IM_CHECK_LT(ImAbs(gScene.Zoom - 0.5f), 0.01f);

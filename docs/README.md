@@ -90,9 +90,9 @@ Keyboard shortcuts only fire when `AreShortcutsEnabled()` returns `true`.
 | `Space`                        | Open the context menu at the mouse position                       |
 | `Ctrl` + `X` / `C` / `V` / `D` | Cut / Copy / Paste / Duplicate (forwarded as actions to the user) |
 
-### Touch screen (with imgui_kit)
+### Touch screen (with imgui_touch)
 
-Built with imgui_kit's touch layer (`IMGUI_BUNDLE_WITH_IMGUI_KIT`, as in Dear ImGui Bundle), the editor reacts to the fingers too.
+Built with imgui_touch's touch layer (`IMGUI_BUNDLE_WITH_IMGUI_TOUCH`, as in Dear ImGui Bundle), the editor reacts to the fingers too.
 
 | Input                                             | Action                                                                                        |
 |---------------------------------------------------|-----------------------------------------------------------------------------------------------|
